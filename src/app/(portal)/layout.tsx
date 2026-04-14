@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Home, FileText, MessageSquare, DollarSign, User, LogOut, Menu, X, FolderKanban,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const supabase = createClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [adminPreviewName, setAdminPreviewName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadClient() {
@@ -41,6 +43,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const match = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("ap_banner="));
+    if (match) {
+      setAdminPreviewName(decodeURIComponent(match.split("=")[1]));
+    }
+  }, []);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -48,8 +59,30 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Top navigation */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      {/* Top navigation (+ optional admin preview banner, both sticky together) */}
+      <div className="sticky top-0 z-50">
+        {adminPreviewName && (
+          <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <span>
+                <strong>Admin Preview Mode</strong> — You are viewing as{" "}
+                <strong>{adminPreviewName}</strong>
+              </span>
+            </div>
+            <button
+              aria-label="Exit admin preview"
+              onClick={() => {
+                document.cookie = "ap_banner=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                setAdminPreviewName(null);
+              }}
+              className="shrink-0 hover:opacity-75 transition-opacity"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
             {/* Brand */}
@@ -136,6 +169,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </div>
         )}
       </header>
+      </div>{/* end sticky wrapper */}
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
