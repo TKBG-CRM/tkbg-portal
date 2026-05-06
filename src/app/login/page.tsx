@@ -60,10 +60,15 @@ export default function LoginPage() {
     setError(null);
 
     const trimmed = email.trim().toLowerCase();
+    // Send users straight to /reset-password (not via /auth/callback).
+    // Supabase appends the recovery params to the redirect URL and the
+    // browser client auto-detects them on page load — same-device
+    // PKCE and cross-device hash-fragment flows both work without
+    // needing the round-trip through a route handler.
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
       trimmed,
       {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        redirectTo: `${window.location.origin}/reset-password`,
       }
     );
 

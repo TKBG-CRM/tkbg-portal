@@ -32,13 +32,29 @@ export async function updateSession(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
   const isAdminPreview = request.nextUrl.pathname === "/admin-preview";
+  // Reset-password must be reachable without an authenticated session
+  // — the user lands there from the password-recovery email before
+  // the supabase JS client has had a chance to exchange the URL
+  // params for a session. The page itself handles the recovery handoff.
+  const isResetPassword = request.nextUrl.pathname === "/reset-password";
+  const isRegister = request.nextUrl.pathname === "/register";
 
-  if (!user && !isLoginPage && !isAuthCallback && !isAdminPreview) {
+  if (
+    !user &&
+    !isLoginPage &&
+    !isAuthCallback &&
+    !isAdminPreview &&
+    !isResetPassword &&
+    !isRegister
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
+  // Don't bounce a logged-in user away from /login if they're in a
+  // password-recovery flow — they need to land on /reset-password
+  // even though they technically have a session.
   if (user && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
