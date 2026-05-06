@@ -17,6 +17,12 @@ import {
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getStageLabel, getProgressPercentage, getAllStagesOrdered, STAGE_CONFIG } from "@/lib/stages";
+import {
+  PORTAL_PROJECT_COLUMNS,
+  PORTAL_ACTIVITY_COLUMNS,
+  PORTAL_BLOCKED_ACTIVITY_TYPES,
+  isCommissionActivity,
+} from "@/lib/portal-columns";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
 
@@ -39,8 +45,15 @@ export default function PortalProjectDetail() {
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["portal-project", projectId],
-    queryFn: async () => {
-      const { data } = await supabase.from("projects").select("*").eq("id", projectId).single();
+    // Cast to any: passing a comma-separated select string drops the
+    // Supabase row-type inference (it returns GenericStringError). The
+    // rest of this file already treats project as a loose record.
+    queryFn: async (): Promise<any> => {
+      const { data } = await supabase
+        .from("projects")
+        .select(PORTAL_PROJECT_COLUMNS)
+        .eq("id", projectId)
+        .single();
       return data;
     },
     enabled: !!projectId,
@@ -57,8 +70,23 @@ export default function PortalProjectDetail() {
   const { data: activities = [] } = useQuery({
     queryKey: ["portal-project-activities", projectId],
     queryFn: async () => {
-      const { data } = await supabase.from("activities").select("*").eq("project_id", projectId).order("created_at", { ascending: false }).limit(20);
-      return data || [];
+      // Narrow column list AND drop commission types at the query
+      // level. Pull a few extra rows since some will be filtered out
+      // client-side as belt-and-braces below.
+      const { data } = await supabase
+        .from("activities")
+        .select(PORTAL_ACTIVITY_COLUMNS)
+        .eq("project_id", projectId)
+        .not(
+          "type",
+          "in",
+          `(${Array.from(PORTAL_BLOCKED_ACTIVITY_TYPES).join(",")})`
+        )
+        .order("created_at", { ascending: false })
+        .limit(40);
+      return ((data as any[]) || [])
+        .filter((a) => !isCommissionActivity(a))
+        .slice(0, 20);
     },
     enabled: !!projectId,
   });

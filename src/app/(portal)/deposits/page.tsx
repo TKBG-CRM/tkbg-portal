@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { DollarSign, Calendar, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PORTAL_PROJECT_COLUMNS } from "@/lib/portal-columns";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
 
@@ -42,7 +43,10 @@ export default function PortalDeposits() {
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["portal-deposit-projects", contactId],
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("*").eq("client_id", contactId);
+      const { data } = await supabase
+        .from("projects")
+        .select(PORTAL_PROJECT_COLUMNS)
+        .eq("client_id", contactId);
       return data || [];
     },
     enabled: !!contactId,

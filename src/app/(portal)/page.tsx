@@ -13,6 +13,12 @@ import { Home, Calendar, MapPin, ArrowRight, Bell, Activity, FolderKanban } from
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getStageLabel, getProgressPercentage, STAGE_CONFIG } from "@/lib/stages";
+import {
+  PORTAL_PROJECT_COLUMNS,
+  PORTAL_ACTIVITY_COLUMNS,
+  PORTAL_BLOCKED_ACTIVITY_TYPES,
+  isCommissionActivity,
+} from "@/lib/portal-columns";
 
 export default function PortalDashboard() {
   const supabase = createClient();
@@ -45,7 +51,7 @@ export default function PortalDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("projects")
-        .select("*")
+        .select(PORTAL_PROJECT_COLUMNS)
         .eq("client_id", contactId)
         .order("created_at", { ascending: false });
       return data || [];
@@ -58,13 +64,22 @@ export default function PortalDashboard() {
     queryFn: async () => {
       if (!projects.length) return [];
       const ids = projects.map((p: any) => p.id);
+      // Pull a wider window then filter — drops commission rows even
+      // if a stale type slips through.
       const { data } = await supabase
         .from("activities")
-        .select("*")
+        .select(PORTAL_ACTIVITY_COLUMNS)
         .in("project_id", ids)
+        .not(
+          "type",
+          "in",
+          `(${Array.from(PORTAL_BLOCKED_ACTIVITY_TYPES).join(",")})`
+        )
         .order("created_at", { ascending: false })
-        .limit(5);
-      return data || [];
+        .limit(15);
+      return ((data as any[]) || [])
+        .filter((a) => !isCommissionActivity(a))
+        .slice(0, 5);
     },
     enabled: projects.length > 0,
   });

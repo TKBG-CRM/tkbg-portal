@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { MapPin, Home, ArrowRight, FolderKanban } from "lucide-react";
 import { getStageLabel, getProgressPercentage } from "@/lib/stages";
+import { PORTAL_PROJECT_COLUMNS } from "@/lib/portal-columns";
 
 export default function PortalProjects() {
   const supabase = createClient();
@@ -37,7 +38,7 @@ export default function PortalProjects() {
       if (!contactId) return [];
       const { data } = await supabase
         .from("projects")
-        .select("*")
+        .select(PORTAL_PROJECT_COLUMNS)
         .eq("client_id", contactId)
         .order("created_at", { ascending: false });
       return data || [];
