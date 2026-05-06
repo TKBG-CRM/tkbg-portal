@@ -188,7 +188,11 @@ export default function PortalDocuments() {
                   </div>
                 </div>
                 {doc.file_url && (
-                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={`/api/documents/download?id=${doc.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
                       <Download className="h-3.5 w-3.5" /> Download
                     </Button>
