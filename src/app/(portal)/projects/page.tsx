@@ -80,7 +80,7 @@ export default function PortalProjects() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h2 className="text-base font-semibold text-black truncate">
-                            {project.name || project.project_name || "Unnamed Project"}
+                            {project.name || "Unnamed Project"}
                           </h2>
                           <Badge className="bg-[#957B60]/10 text-[#957B60] border-0 text-xs shrink-0">
                             {stageLabel}

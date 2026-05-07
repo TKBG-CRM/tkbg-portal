@@ -15,7 +15,6 @@
 export const PORTAL_PROJECT_COLUMNS = [
   "id",
   "name",
-  "project_name",
   "stage",
   "client_id",
   "co_client_ids",
