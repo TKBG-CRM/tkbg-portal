@@ -12,10 +12,13 @@ import { Progress } from "@/components/ui/progress";
 import { Home, Calendar, MapPin, ArrowRight, Bell, FolderKanban } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getStageLabel, getProgressPercentage, STAGE_CONFIG } from "@/lib/stages";
+import { getProgressPercentage, STAGE_CONFIG } from "@/lib/stages";
 import {
   PORTAL_PROJECT_COLUMNS,
   scrubCommission,
+  CLIENT_STAGE_ORDER,
+  CLIENT_STAGE_TITLES,
+  clientFacingStageLabel,
 } from "@/lib/portal-columns";
 
 export default function PortalDashboard() {
@@ -127,9 +130,27 @@ export default function PortalDashboard() {
       ) : (
         projects.map((project: any) => {
           const progress = getProgressPercentage(project.stage);
-          const stageLabel = getStageLabel(project.stage);
-          const nextStages = STAGE_CONFIG[project.stage]?.nextStages || [];
-          const nextStageLabel = nextStages.length > 0 ? getStageLabel(nextStages[0]) : null;
+          const currentOrder = STAGE_CONFIG[project.stage]?.order || 0;
+          // Client-friendly current-stage badge: walks backwards
+          // through CLIENT_STAGE_ORDER to the most recent milestone
+          // the project has actually reached, so internal stages
+          // (Gift Hamper Sent, Product Review Requested, etc.) never
+          // surface to the client.
+          const stageLabel = clientFacingStageLabel(
+            project.stage,
+            currentOrder,
+            (id) => STAGE_CONFIG[id]?.order || 0
+          );
+          // "Next Step" — the next CLIENT-VISIBLE milestone after the
+          // current order, not just whatever the raw STAGE_CONFIG's
+          // nextStages array points at.
+          const nextVisibleId = CLIENT_STAGE_ORDER.find((id) => {
+            const o = STAGE_CONFIG[id]?.order || 0;
+            return o > currentOrder;
+          });
+          const nextStageLabel = nextVisibleId
+            ? CLIENT_STAGE_TITLES[nextVisibleId] || nextVisibleId
+            : null;
 
           return (
             <Card key={project.id} className="border border-neutral-200 shadow-sm overflow-hidden">

@@ -95,6 +95,45 @@ export const CLIENT_VISIBLE_STAGES = new Set<string>([
   "handover_completed",
 ]);
 
+// Stage IDs that exist for portal-friendly framing — used by
+// clientFacingStageLabel below to walk backwards from the project's
+// current stage to the most-recent milestone the client knows about.
+export const CLIENT_STAGE_ORDER = [
+  "discovery_meeting_completed",
+  "initial_deposit_received",
+  "preliminary_works_agreement",
+  "contract_signed",
+  "bod_received",
+  "formal_approval_received",
+  "land_settled",
+  "building_permit_received",
+  "construction_base",
+  "construction_frame",
+  "construction_lockup",
+  "construction_fixout",
+  "construction_completion",
+  "handover_completed",
+] as const;
+
+// Given the project's raw stage_id + order, return the friendly label
+// for the most recent CLIENT-VISIBLE milestone it has reached. Avoids
+// surfacing internal stage names like "Gift Hamper Sent" anywhere in
+// the portal.
+export function clientFacingStageLabel(
+  currentStageId: string | null | undefined,
+  currentStageOrder: number,
+  stageOrderById: (id: string) => number
+): string {
+  for (let i = CLIENT_STAGE_ORDER.length - 1; i >= 0; i--) {
+    const id = CLIENT_STAGE_ORDER[i];
+    const order = stageOrderById(id);
+    if (order > 0 && order <= currentStageOrder) {
+      return CLIENT_STAGE_TITLES[id] || id;
+    }
+  }
+  return "In progress";
+}
+
 // Friendly titles for the client-facing stage milestones. Falls back
 // to whatever the activity row already has if a stage isn't mapped.
 export const CLIENT_STAGE_TITLES: Record<string, string> = {

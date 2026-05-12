@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getStageLabel, getProgressPercentage, getAllStagesOrdered, STAGE_CONFIG } from "@/lib/stages";
+import { getProgressPercentage, getAllStagesOrdered, STAGE_CONFIG } from "@/lib/stages";
 import {
   PORTAL_PROJECT_COLUMNS,
   scrubCommission,
+  CLIENT_VISIBLE_STAGES,
+  CLIENT_STAGE_TITLES,
+  clientFacingStageLabel,
 } from "@/lib/portal-columns";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
@@ -93,9 +96,33 @@ export default function PortalProjectDetail() {
   const contactMap = contacts.reduce((a: any, c: any) => { a[c.id] = c; return a; }, {});
   const builder = project.builder_id ? contactMap[project.builder_id] : null;
   const broker = project.broker_id ? contactMap[project.broker_id] : null;
-  const progress = getProgressPercentage(project.stage);
-  const allStages = getAllStagesOrdered().filter((s) => !s.isTerminal && !s.isOptional);
   const currentOrder = STAGE_CONFIG[project.stage]?.order || 0;
+  // Only show client-friendly milestone stages on the portal timeline.
+  // Internal workflow stages (Enquiry Made, Contact Attempted, Gift
+  // Hamper Sent, Product Review Requested, Contract Checked, etc.)
+  // stay in the CRM but never surface to the client.
+  const allStages = getAllStagesOrdered()
+    .filter((s) => !s.isTerminal && !s.isOptional)
+    .filter((s) => CLIENT_VISIBLE_STAGES.has(s.id))
+    .map((s) => ({ ...s, label: CLIENT_STAGE_TITLES[s.id] || s.label }));
+
+  // Header badge: friendly label for the most recent CLIENT-VISIBLE
+  // milestone reached. Internal stages (Gift Hamper Sent, etc.)
+  // never surface in the badge.
+  const headerStageLabel = clientFacingStageLabel(
+    project.stage,
+    currentOrder,
+    (id) => STAGE_CONFIG[id]?.order || 0
+  );
+
+  // Re-derive a client-facing percentage based on visible milestones
+  // only — feels more meaningful than the raw 1-of-46 progression.
+  const visibleCount = allStages.length;
+  const reachedCount = allStages.filter((s) => s.order <= currentOrder).length;
+  const progress =
+    visibleCount > 0
+      ? Math.round((reachedCount / visibleCount) * 100)
+      : getProgressPercentage(project.stage);
 
   const totalDeposit = Number(project.total_deposit_amount) || 0;
   const paidPayments = depositPayments.filter((p: any) => p.status === "paid");
@@ -122,7 +149,7 @@ export default function PortalProjectDetail() {
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold text-black tracking-tight">{project.name}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <Badge className="bg-[#957B60]/10 text-[#957B60] border-0">{getStageLabel(project.stage)}</Badge>
+            <Badge className="bg-[#957B60]/10 text-[#957B60] border-0">{headerStageLabel}</Badge>
             <span className="text-xs text-neutral-400">{progress}% complete</span>
           </div>
         </div>

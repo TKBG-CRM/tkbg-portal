@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { MapPin, Home, ArrowRight, FolderKanban } from "lucide-react";
-import { getStageLabel, getProgressPercentage } from "@/lib/stages";
+import {
+  getProgressPercentage,
+  STAGE_CONFIG,
+} from "@/lib/stages";
+import { clientFacingStageLabel } from "@/lib/portal-columns";
 import { PORTAL_PROJECT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
 
 export default function PortalProjects() {
@@ -71,7 +75,14 @@ export default function PortalProjects() {
         <div className="space-y-4">
           {projects.map((project: any) => {
             const progress = getProgressPercentage(project.stage);
-            const stageLabel = getStageLabel(project.stage);
+            // Friendly label — internal-only stages like "Gift Hamper
+            // Sent" never appear on the client portal; we surface the
+            // most recent client-visible milestone instead.
+            const stageLabel = clientFacingStageLabel(
+              project.stage,
+              STAGE_CONFIG[project.stage]?.order || 0,
+              (id) => STAGE_CONFIG[id]?.order || 0
+            );
             return (
               <Link key={project.id} href={`/projects/${project.id}`}>
                 <Card className="border border-neutral-200 hover:border-[#957B60]/40 hover:shadow-md transition-all cursor-pointer">
