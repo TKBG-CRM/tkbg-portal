@@ -228,9 +228,11 @@ function ProjectDepositsCard({
       : "Split across Land + Build";
   const toLandDev = project.initial_deposit_to_land_developer;
   const toTkbg = project.initial_deposit_to_tkbg;
+  const toBuilder = project.initial_deposit_to_builder;
   const hasDestSplit =
     (toLandDev != null && Number(toLandDev) > 0) ||
-    (toTkbg != null && Number(toTkbg) > 0);
+    (toTkbg != null && Number(toTkbg) > 0) ||
+    (toBuilder != null && Number(toBuilder) > 0);
 
   return (
     <Card className="border border-neutral-200 shadow-sm">
@@ -269,7 +271,13 @@ function ProjectDepositsCard({
           )}
           {hasDestSplit && (
             <p className="text-[11px] text-neutral-500 pt-1 border-t border-[#957B60]/15 mt-1">
-              {fmt(toLandDev)} → Land Developer · {fmt(toTkbg)} held in TKRE Trust
+              {[
+                Number(toLandDev) > 0 ? `${fmt(toLandDev)} → Land Developer` : null,
+                Number(toTkbg) > 0 ? `${fmt(toTkbg)} held in TKRE Trust` : null,
+                Number(toBuilder) > 0 ? `${fmt(toBuilder)} → Builder` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           )}
         </div>
