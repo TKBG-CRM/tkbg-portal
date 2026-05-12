@@ -60,27 +60,135 @@ export const PORTAL_PROJECT_COLUMNS = [
 ].join(", ");
 
 export const PORTAL_ACTIVITY_COLUMNS =
-  "id, project_id, type, title, description, created_at";
+  "id, project_id, type, title, description, metadata, created_at";
 
-// Activity types that must never appear in the portal feed.
-export const PORTAL_BLOCKED_ACTIVITY_TYPES = new Set([
-  "commission",
-  "referral_commission",
+// Strict allowlist of activity TYPES that may surface in the portal
+// feed. Everything else (tasks, notes, internal calls, "Auto-task:
+// Order gift hamper", rep notes, commission rows, etc.) is invisible
+// to the client by default.
+export const PORTAL_ALLOWED_ACTIVITY_TYPES = [
+  "stage_change",
+  "meeting",
+  "deposit_received",
+  "email",
+] as const;
+
+// For stage_change rows, only these specific stage transitions are
+// considered "client-friendly milestones" worth showing. Internal
+// workflow stages (contract appointment booked, gift hamper sent,
+// product review requested, contract requested from builder, etc.)
+// stay hidden even though their activity row passes the type filter.
+export const CLIENT_VISIBLE_STAGES = new Set<string>([
+  "discovery_meeting_completed",
+  "initial_deposit_received",
+  "preliminary_works_agreement",
+  "contract_signed",
+  "bod_received",
+  "formal_approval_received",
+  "land_settled",
+  "building_permit_received",
+  "construction_base",
+  "construction_frame",
+  "construction_lockup",
+  "construction_fixout",
+  "construction_completion",
+  "handover_completed",
 ]);
 
-// Belt-and-braces filter: even if an activity slips through with a
-// non-commission type, drop it when its title or description names
-// commission detail.
+// Friendly titles for the client-facing stage milestones. Falls back
+// to whatever the activity row already has if a stage isn't mapped.
+export const CLIENT_STAGE_TITLES: Record<string, string> = {
+  discovery_meeting_completed: "Discovery meeting completed",
+  initial_deposit_received: "Initial deposit received — thank you!",
+  preliminary_works_agreement: "Preliminary Works Agreement signed",
+  contract_signed: "Building contract signed",
+  bod_received: "Balance of deposit received",
+  formal_approval_received: "Finance formally approved",
+  land_settled: "Land settled",
+  building_permit_received: "Building permit received",
+  construction_base: "Construction reached the base stage",
+  construction_frame: "Construction reached the frame stage",
+  construction_lockup: "Construction reached the lockup stage",
+  construction_fixout: "Construction reached the fixout stage",
+  construction_completion: "Construction completion reached",
+  handover_completed: "Handover complete — welcome home!",
+};
+
+// Belt-and-braces text filter. Even after the type allowlist + stage
+// filter, drop any row whose title/description names internal
+// concepts a client should never see: commission, agency fees, tasks
+// like "order gift hamper", rep-only notes, "Auto-task:" / "Auto-
+// email:" prefixes (those are CRM automation receipts, not client
+// updates).
+const PORTAL_HIDDEN_KEYWORDS = [
+  "commission",
+  "referral fee",
+  "agency commission",
+  "auto-task:",
+  "auto-email:",
+  "gift hamper",
+  "product review request",
+  "internal",
+  "rep notes",
+];
+
+export function isClientVisibleActivity(activity: {
+  type?: string | null;
+  title?: string | null;
+  description?: string | null;
+  metadata?: any;
+}): boolean {
+  if (!activity.type) return false;
+  if (
+    !PORTAL_ALLOWED_ACTIVITY_TYPES.includes(
+      activity.type as (typeof PORTAL_ALLOWED_ACTIVITY_TYPES)[number]
+    )
+  ) {
+    return false;
+  }
+  if (activity.type === "stage_change") {
+    const ns = (activity.metadata as any)?.new_stage as string | undefined;
+    if (!ns || !CLIENT_VISIBLE_STAGES.has(ns)) return false;
+  }
+  const haystack = `${activity.title || ""} ${activity.description || ""}`.toLowerCase();
+  if (PORTAL_HIDDEN_KEYWORDS.some((kw) => haystack.includes(kw))) return false;
+  return true;
+}
+
+// Apply a friendly title to stage_change rows; pass other rows through
+// unchanged. Used after isClientVisibleActivity filtering.
+export function rewriteActivityForClient<T extends {
+  type?: string | null;
+  title?: string | null;
+  metadata?: any;
+}>(activity: T): T {
+  if (activity.type !== "stage_change") return activity;
+  const ns = (activity.metadata as any)?.new_stage as string | undefined;
+  if (ns && CLIENT_STAGE_TITLES[ns]) {
+    return { ...activity, title: CLIENT_STAGE_TITLES[ns] };
+  }
+  return activity;
+}
+
+// ─── Legacy compatibility exports ──────────────────────────────────────
+// Older imports still use these names. Keep them around so existing
+// callers don't break on upgrade — they alias the new allowlist.
+export const PORTAL_BLOCKED_ACTIVITY_TYPES: Set<string> = new Set([
+  "commission",
+  "referral_commission",
+  "task",
+  "note",
+  "call",
+]);
+
 export function isCommissionActivity(activity: {
   type?: string | null;
   title?: string | null;
   description?: string | null;
 }): boolean {
-  if (activity.type && PORTAL_BLOCKED_ACTIVITY_TYPES.has(activity.type)) {
-    return true;
-  }
-  const haystack = `${activity.title || ""} ${activity.description || ""}`.toLowerCase();
-  return haystack.includes("commission");
+  // Backwards-compatible: anything the new visibility check would
+  // drop is treated as commission/internal for legacy callers.
+  return !isClientVisibleActivity(activity as any);
 }
 
 // Final defensive scrubber. Wrap any query result with this before

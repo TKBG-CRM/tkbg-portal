@@ -9,15 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Home, Calendar, MapPin, ArrowRight, Bell, Activity, FolderKanban } from "lucide-react";
+import { Home, Calendar, MapPin, ArrowRight, Bell, FolderKanban } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getStageLabel, getProgressPercentage, STAGE_CONFIG } from "@/lib/stages";
 import {
   PORTAL_PROJECT_COLUMNS,
-  PORTAL_ACTIVITY_COLUMNS,
-  PORTAL_BLOCKED_ACTIVITY_TYPES,
-  isCommissionActivity,
   scrubCommission,
 } from "@/lib/portal-columns";
 
@@ -60,32 +57,8 @@ export default function PortalDashboard() {
     enabled: !!contactId,
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["portal-activities", contactId],
-    queryFn: async () => {
-      if (!projects.length) return [];
-      const ids = projects.map((p: any) => p.id);
-      // Pull a wider window then filter — drops commission rows even
-      // if a stale type slips through.
-      const { data } = await supabase
-        .from("activities")
-        .select(PORTAL_ACTIVITY_COLUMNS)
-        .in("project_id", ids)
-        .not(
-          "type",
-          "in",
-          `(${Array.from(PORTAL_BLOCKED_ACTIVITY_TYPES).join(",")})`
-        )
-        .order("created_at", { ascending: false })
-        .limit(15);
-      return scrubCommission(
-        ((data as any[]) || [])
-          .filter((a) => !isCommissionActivity(a))
-          .slice(0, 5)
-      );
-    },
-    enabled: projects.length > 0,
-  });
+  // Activity timeline removed from the portal — clients are notified
+  // via push / email instead. No fetch, no render.
 
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["portal-notifications", userId],
@@ -100,16 +73,15 @@ export default function PortalDashboard() {
     enabled: !!userId,
   });
 
-  // Realtime subscription
+  // Realtime subscription — only project changes are surfaced now.
+  // Activity inserts no longer trigger a refresh because the portal
+  // doesn't display the activity feed any more.
   useEffect(() => {
     if (!contactId) return;
     const channel = supabase
       .channel("portal-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "projects", filter: `client_id=eq.${contactId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["portal-projects", contactId] });
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activities" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["portal-activities", contactId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -239,33 +211,9 @@ export default function PortalDashboard() {
         })
       )}
 
-      {/* Recent Activity */}
-      {activities.length > 0 && (
-        <Card className="border border-neutral-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium text-black flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[#957B60]" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {activities.map((a: any) => (
-                <div key={a.id} className="flex gap-3 text-sm">
-                  <div className="w-2 h-2 rounded-full bg-[#957B60] mt-1.5 flex-none" />
-                  <div>
-                    <p className="font-medium text-neutral-800">{a.title}</p>
-                    {a.description && <p className="text-neutral-500 text-xs mt-0.5">{a.description}</p>}
-                    <p className="text-xs text-neutral-400 mt-1">
-                      {format(new Date(a.created_at), "d MMM yyyy 'at' h:mm a")}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Recent Activity feed removed — clients now receive
+          notifications when actions occur instead of seeing the
+          internal activity log. */}
     </div>
   );
 }

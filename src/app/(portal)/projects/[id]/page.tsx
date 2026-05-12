@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useParams } from "next/navigation";
@@ -10,18 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft, MapPin, Home, Calendar, DollarSign, Activity, CheckCircle2, Clock, Circle,
+  ArrowLeft, MapPin, Home, Calendar, DollarSign, CheckCircle2, Circle,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getStageLabel, getProgressPercentage, getAllStagesOrdered, STAGE_CONFIG } from "@/lib/stages";
 import {
   PORTAL_PROJECT_COLUMNS,
-  PORTAL_ACTIVITY_COLUMNS,
-  PORTAL_BLOCKED_ACTIVITY_TYPES,
-  isCommissionActivity,
   scrubCommission,
 } from "@/lib/portal-columns";
 
@@ -31,18 +26,9 @@ export default function PortalProjectDetail() {
   const params = useParams();
   const projectId = params.id as string;
   const supabase = createClient();
-  const [contactId, setContactId] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: c } = await supabase.from("contacts").select("id").eq("linked_user_id", user.id).single();
-      if (c) setContactId(c.id);
-    }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // RLS on projects already scopes the select to the signed-in
+  // client's projects — no need to resolve contactId here just to
+  // gate the query.
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["portal-project", projectId],
@@ -68,31 +54,8 @@ export default function PortalProjectDetail() {
     },
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["portal-project-activities", projectId],
-    queryFn: async () => {
-      // Narrow column list AND drop commission types at the query
-      // level. Pull a few extra rows since some will be filtered out
-      // client-side as belt-and-braces below.
-      const { data } = await supabase
-        .from("activities")
-        .select(PORTAL_ACTIVITY_COLUMNS)
-        .eq("project_id", projectId)
-        .not(
-          "type",
-          "in",
-          `(${Array.from(PORTAL_BLOCKED_ACTIVITY_TYPES).join(",")})`
-        )
-        .order("created_at", { ascending: false })
-        .limit(40);
-      return scrubCommission(
-        ((data as any[]) || [])
-          .filter((a) => !isCommissionActivity(a))
-          .slice(0, 20)
-      );
-    },
-    enabled: !!projectId,
-  });
+  // Activity timeline removed from the portal — clients no longer see
+  // the running activity log. Notifications carry the relevant events.
 
   const { data: depositPlans = [] } = useQuery({
     queryKey: ["portal-deposit-plans", projectId],
@@ -307,34 +270,8 @@ export default function PortalProjectDetail() {
         </Card>
       )}
 
-      {/* Activity */}
-      {activities.length > 0 && (
-        <Card className="border border-neutral-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium text-black flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[#957B60]" />
-              Activity Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.map((a: any) => (
-                <div key={a.id} className="flex gap-3 text-sm">
-                  <div className="flex flex-col items-center">
-                    <div className="w-2 h-2 rounded-full bg-[#957B60] mt-1.5" />
-                    <div className="w-px flex-1 bg-neutral-200 mt-1" />
-                  </div>
-                  <div className="pb-4">
-                    <p className="font-medium text-neutral-800">{a.title}</p>
-                    {a.description && <p className="text-neutral-500 text-xs mt-0.5">{a.description}</p>}
-                    <p className="text-xs text-neutral-400 mt-1">{format(new Date(a.created_at), "d MMM yyyy 'at' h:mm a")}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Activity Timeline removed — clients receive notifications
+          for relevant events instead of seeing the running log. */}
     </div>
   );
 }
