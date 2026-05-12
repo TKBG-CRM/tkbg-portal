@@ -18,6 +18,7 @@ import {
   PORTAL_ACTIVITY_COLUMNS,
   PORTAL_BLOCKED_ACTIVITY_TYPES,
   isCommissionActivity,
+  scrubCommission,
 } from "@/lib/portal-columns";
 
 export default function PortalDashboard() {
@@ -54,7 +55,7 @@ export default function PortalDashboard() {
         .select(PORTAL_PROJECT_COLUMNS)
         .eq("client_id", contactId)
         .order("created_at", { ascending: false });
-      return data || [];
+      return scrubCommission(data || []);
     },
     enabled: !!contactId,
   });
@@ -77,9 +78,11 @@ export default function PortalDashboard() {
         )
         .order("created_at", { ascending: false })
         .limit(15);
-      return ((data as any[]) || [])
-        .filter((a) => !isCommissionActivity(a))
-        .slice(0, 5);
+      return scrubCommission(
+        ((data as any[]) || [])
+          .filter((a) => !isCommissionActivity(a))
+          .slice(0, 5)
+      );
     },
     enabled: projects.length > 0,
   });

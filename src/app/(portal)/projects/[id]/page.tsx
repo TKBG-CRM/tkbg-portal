@@ -22,6 +22,7 @@ import {
   PORTAL_ACTIVITY_COLUMNS,
   PORTAL_BLOCKED_ACTIVITY_TYPES,
   isCommissionActivity,
+  scrubCommission,
 } from "@/lib/portal-columns";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
@@ -54,7 +55,7 @@ export default function PortalProjectDetail() {
         .select(PORTAL_PROJECT_COLUMNS)
         .eq("id", projectId)
         .single();
-      return data;
+      return scrubCommission(data);
     },
     enabled: !!projectId,
   });
@@ -84,9 +85,11 @@ export default function PortalProjectDetail() {
         )
         .order("created_at", { ascending: false })
         .limit(40);
-      return ((data as any[]) || [])
-        .filter((a) => !isCommissionActivity(a))
-        .slice(0, 20);
+      return scrubCommission(
+        ((data as any[]) || [])
+          .filter((a) => !isCommissionActivity(a))
+          .slice(0, 20)
+      );
     },
     enabled: !!projectId,
   });

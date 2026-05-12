@@ -82,3 +82,27 @@ export function isCommissionActivity(activity: {
   const haystack = `${activity.title || ""} ${activity.description || ""}`.toLowerCase();
   return haystack.includes("commission");
 }
+
+// Final defensive scrubber. Wrap any query result with this before
+// returning it from a portal page. It deletes any object key that
+// looks like a commission / referral-fee / agent-commission field
+// regardless of where it came from, so a future select("*") or a
+// new internal column that slips through still can't leak commission
+// detail to the client. Cheap O(n) walk over the response.
+const COMMISSION_KEY_PATTERN =
+  /^(commission|referral_commission|referral_amount|agent_commission)/i;
+
+export function scrubCommission<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((v) => scrubCommission(v)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (COMMISSION_KEY_PATTERN.test(k)) continue;
+      out[k] = scrubCommission(v);
+    }
+    return out as T;
+  }
+  return value;
+}

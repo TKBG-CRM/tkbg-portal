@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { PORTAL_PROJECT_COLUMNS } from "@/lib/portal-columns";
+import { PORTAL_PROJECT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
 
 const fmt = (n: any) =>
   n == null || Number.isNaN(Number(n))
@@ -101,7 +101,7 @@ export default function PortalDeposits() {
         .from("projects")
         .select(PORTAL_PROJECT_COLUMNS)
         .eq("client_id", contactId);
-      return data || [];
+      return scrubCommission(data || []);
     },
     enabled: !!contactId,
   });
