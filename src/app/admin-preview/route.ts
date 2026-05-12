@@ -22,12 +22,17 @@ export async function GET(request: NextRequest) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Validate the preview token
+  // 1. Validate the preview token. We deliberately DON'T require
+  //    used_at IS NULL — mobile browsers (especially iOS Safari)
+  //    prefetch links, fire duplicate GETs on back/forward, and
+  //    re-issue on refresh, which used to consume the one-time
+  //    token before the user actually saw the page and dump them
+  //    on /login the second time around. Short TTL on the token
+  //    is the real security gate; reuse within that window is fine.
   const { data: previewToken, error: tokenError } = await admin
     .from("admin_preview_tokens")
     .select("id, contact_id, contacts(first_name, last_name, linked_user_id)")
     .eq("token", token)
-    .is("used_at", null)
     .gt("expires_at", new Date().toISOString())
     .single();
 
@@ -35,11 +40,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=invalid_token", request.url));
   }
 
-  // 2. Mark token as used (one-time use)
+  // 2. Stamp used_at on first consumption (best-effort, race-safe).
+  //    Subsequent hits inside the TTL window just re-establish the
+  //    session without re-stamping.
   await admin
     .from("admin_preview_tokens")
     .update({ used_at: new Date().toISOString() })
-    .eq("id", previewToken.id);
+    .eq("id", previewToken.id)
+    .is("used_at", null);
 
   const contact = previewToken.contacts as any;
   if (!contact?.linked_user_id) {

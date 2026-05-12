@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,36 @@ import {
 
 type Mode = "login" | "forgot";
 
+// Map the ?error= codes the admin-preview / auth-callback flows emit
+// into something a rep / client can actually act on. Without this the
+// preview flow could bounce someone here with no explanation.
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_token:
+    "That preview link has expired. Head back to the CRM and open the portal again.",
+  no_portal_account:
+    "This client hasn't completed their portal registration yet, so there's no portal account to preview as.",
+  link_failed:
+    "We couldn't establish a portal session for that client. Try opening the portal again — if it keeps happening, ask the client to reset their portal password.",
+  session_failed:
+    "Couldn't sign you in to preview that portal. Try opening it again from the CRM.",
+  server_error: "Server hiccup. Try again shortly.",
+  auth: "Your session expired or the link was already used. Please sign in.",
+};
+
+// useSearchParams() needs a <Suspense> boundary for Next.js prerender.
+// Wrap the actual form in a child component and render it inside
+// Suspense from the default export.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -26,6 +54,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+
+  // Surface ?error=… from the preview / auth callback flows so the
+  // user knows why they landed back at the login screen.
+  useEffect(() => {
+    const code = searchParams?.get("error");
+    if (code && ERROR_MESSAGES[code]) setError(ERROR_MESSAGES[code]);
+  }, [searchParams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
