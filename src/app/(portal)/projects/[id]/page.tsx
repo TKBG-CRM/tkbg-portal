@@ -22,6 +22,7 @@ import {
   CLIENT_STAGE_TITLES,
   clientFacingStageLabel,
 } from "@/lib/portal-columns";
+import { computeDepositPaid } from "@/lib/deposits";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
 
@@ -59,26 +60,6 @@ export default function PortalProjectDetail() {
 
   // Activity timeline removed from the portal — clients no longer see
   // the running activity log. Notifications carry the relevant events.
-
-  const { data: depositPlans = [] } = useQuery({
-    queryKey: ["portal-deposit-plans", projectId],
-    queryFn: async () => {
-      const { data } = await supabase.from("deposit_payment_plans").select("*").eq("project_id", projectId);
-      return data || [];
-    },
-    enabled: !!projectId,
-  });
-
-  const { data: depositPayments = [] } = useQuery({
-    queryKey: ["portal-deposit-payments", projectId],
-    queryFn: async () => {
-      if (!depositPlans.length) return [];
-      const planIds = depositPlans.map((p: any) => p.id);
-      const { data } = await supabase.from("deposit_plan_payments").select("*").in("plan_id", planIds).order("instalment_number");
-      return data || [];
-    },
-    enabled: depositPlans.length > 0,
-  });
 
   if (isLoading) {
     return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /><Skeleton className="h-48 w-full" /></div>;
@@ -125,8 +106,11 @@ export default function PortalProjectDetail() {
       : getProgressPercentage(project.stage);
 
   const totalDeposit = Number(project.total_deposit_amount) || 0;
-  const paidPayments = depositPayments.filter((p: any) => p.status === "paid");
-  const totalPaid = paidPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+  // "Paid" reflects deposits actually received on the project (initial
+  // deposit credited across the land/build legs), matching the Deposits
+  // page — not just payment-plan instalments, which left this at $0 when
+  // an initial deposit had been received without a plan.
+  const totalPaid = computeDepositPaid(project);
 
   const keyDates = [
     { label: "Finance Expiry", date: project.finance_expiry_date, icon: DollarSign },

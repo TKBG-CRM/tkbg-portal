@@ -18,6 +18,7 @@ import {
 import { format, isPast, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PORTAL_PROJECT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
+import { type Allocation, computeAllocationSplit } from "@/lib/deposits";
 
 const fmt = (n: any) =>
   n == null || Number.isNaN(Number(n))
@@ -47,24 +48,6 @@ const statusConfig: Record<
     bg: "bg-red-50 border-red-200",
   },
 };
-
-type Allocation = "land" | "build" | "split";
-
-function computeAllocationSplit(
-  initial: number | null,
-  land: number | null,
-  build: number | null,
-  allocation: Allocation
-): { land: number; build: number } {
-  const i = initial ?? 0;
-  if (i <= 0) return { land: 0, build: 0 };
-  if (allocation === "land") return { land: i, build: 0 };
-  if (allocation === "build") return { land: 0, build: i };
-  const l = land ?? 0;
-  const b = build ?? 0;
-  if (l + b <= 0) return { land: i / 2, build: i / 2 };
-  return { land: (i * l) / (l + b), build: (i * b) / (l + b) };
-}
 
 export default function PortalDeposits() {
   const supabase = createClient();
