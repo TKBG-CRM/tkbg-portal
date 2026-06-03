@@ -96,10 +96,21 @@ export default function PortalProjectDetail() {
     (id) => STAGE_CONFIG[id]?.order || 0
   );
 
+  // The client has paid their initial deposit once it's recorded on the
+  // project, regardless of whether the CRM stage has been advanced — so the
+  // "Initial deposit received" milestone should tick as soon as the deposit
+  // lands, not only when someone moves the stage.
+  const initialDepositReceived =
+    !!project.initial_deposit_paid_at ||
+    (Number(project.initial_deposit_amount) || 0) > 0;
+  const isStageReached = (s: { id: string; order: number }) =>
+    s.order <= currentOrder ||
+    (s.id === "initial_deposit_received" && initialDepositReceived);
+
   // Re-derive a client-facing percentage based on visible milestones
   // only — feels more meaningful than the raw 1-of-46 progression.
   const visibleCount = allStages.length;
-  const reachedCount = allStages.filter((s) => s.order <= currentOrder).length;
+  const reachedCount = allStages.filter(isStageReached).length;
   const progress =
     visibleCount > 0
       ? Math.round((reachedCount / visibleCount) * 100)
@@ -148,8 +159,10 @@ export default function PortalProjectDetail() {
           <Progress value={progress} className="h-2 mb-4" />
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {allStages.slice(0, 20).map((stage) => {
-              const isCompleted = stage.order < currentOrder;
-              const isCurrent = stage.id === project.stage;
+              const isCompleted =
+                stage.order < currentOrder ||
+                (stage.id === "initial_deposit_received" && initialDepositReceived);
+              const isCurrent = stage.id === project.stage && !isCompleted;
               return (
                 <div key={stage.id} className="flex items-center gap-3">
                   {isCompleted ? (
