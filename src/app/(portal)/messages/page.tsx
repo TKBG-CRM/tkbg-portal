@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { MessageSquare, Send, User, ArrowLeft } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { containsHiddenKeyword } from "@/lib/portal-columns";
 
 export default function PortalMessages() {
   const supabase = createClient();
@@ -53,7 +54,13 @@ export default function PortalMessages() {
     queryFn: async () => {
       if (!contactId) return [];
       const { data } = await supabase.from("email_log").select("*").eq("contact_id", contactId).order("sent_at", { ascending: false });
-      return data || [];
+      // The email feed renders subject + body verbatim, so drop any logged
+      // email that mentions commission / other internal topics before it ever
+      // reaches the client (e.g. a rep's email to a referral partner that got
+      // logged against this contact).
+      return (data || []).filter(
+        (e: any) => !containsHiddenKeyword(e.subject, e.body_preview)
+      );
     },
     enabled: !!contactId,
   });

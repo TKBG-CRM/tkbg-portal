@@ -17,7 +17,9 @@ const config: Config = {
         foreground: "hsl(var(--foreground))",
         brand: {
           gold: "#957B60",
+          "gold-dark": "#7d6750",
           "gold-light": "rgba(149, 123, 96, 0.08)",
+          black: "#000000",
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",

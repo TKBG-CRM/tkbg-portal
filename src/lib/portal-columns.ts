@@ -59,6 +59,37 @@ export const PORTAL_PROJECT_COLUMNS = [
   "updated_at",
 ].join(", ");
 
+// Client-safe columns on the `contacts` table. The contact row carries a
+// pile of internal-only fields — `financial_snapshot`, `notes`,
+// `referral_partner_id`, `land_price` / `build_price` / `contract_value`,
+// `budget_*`, `deposit_available`, `lead_status`, `sales_rep_id`, etc. — that
+// must never reach a portal client. A `select("*")` on the client's own
+// contact still ships all of those in the JSON payload (DevTools network tab)
+// even if the UI only renders their name. Select through this list instead.
+export const PORTAL_CONTACT_COLUMNS = [
+  "id",
+  "first_name",
+  "middle_name",
+  "last_name",
+  "preferred_name",
+  "email",
+  "phone",
+  "contact_type",
+  "buyer_type",
+  "address_line1",
+  "address_line2",
+  "suburb",
+  "state",
+  "postcode",
+  "country",
+  "company_name",
+  "source",
+  "tags",
+  "is_registered",
+  "created_at",
+  "updated_at",
+].join(", ");
+
 export const PORTAL_ACTIVITY_COLUMNS =
   "id, project_id, type, title, description, metadata, created_at";
 
@@ -159,10 +190,13 @@ export const CLIENT_STAGE_TITLES: Record<string, string> = {
 // like "order gift hamper", rep-only notes, "Auto-task:" / "Auto-
 // email:" prefixes (those are CRM automation receipts, not client
 // updates).
-const PORTAL_HIDDEN_KEYWORDS = [
+export const PORTAL_HIDDEN_KEYWORDS = [
   "commission",
   "referral fee",
+  "referral commission",
   "agency commission",
+  "agent commission",
+  "kickback",
   "auto-task:",
   "auto-email:",
   "gift hamper",
@@ -170,6 +204,17 @@ const PORTAL_HIDDEN_KEYWORDS = [
   "internal",
   "rep notes",
 ];
+
+// True if free text mentions an internal/commission topic a client should
+// never see. Used to keep commission chatter out of surfaces that render raw
+// staff-authored text verbatim (e.g. the email feed), the same way
+// isClientVisibleActivity guards the activity timeline.
+export function containsHiddenKeyword(
+  ...parts: Array<string | null | undefined>
+): boolean {
+  const haystack = parts.map((p) => p || "").join(" ").toLowerCase();
+  return PORTAL_HIDDEN_KEYWORDS.some((kw) => haystack.includes(kw));
+}
 
 export function isClientVisibleActivity(activity: {
   type?: string | null;

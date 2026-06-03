@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Save, Mail, Phone, MapPin, Calendar, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { PORTAL_CONTACT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
 
 export default function PortalProfile() {
   const supabase = createClient();
@@ -32,16 +33,23 @@ export default function PortalProfile() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("contacts").select("*").eq("linked_user_id", user.id).single();
-      if (data) {
-        setContact(data);
+      const { data } = await supabase
+        .from("contacts")
+        .select(PORTAL_CONTACT_COLUMNS)
+        .eq("linked_user_id", user.id)
+        .single();
+      // Dynamic-string select breaks Supabase's column type inference, so the
+      // row comes back loosely typed — treat it as the client-safe contact.
+      const row = data as Record<string, any> | null;
+      if (row) {
+        setContact(scrubCommission(row));
         setForm({
-          email: data.email || "",
-          phone: data.phone || "",
-          address_line1: data.address_line1 || "",
-          suburb: data.suburb || "",
-          state: data.state || "",
-          postcode: data.postcode || "",
+          email: row.email || "",
+          phone: row.phone || "",
+          address_line1: row.address_line1 || "",
+          suburb: row.suburb || "",
+          state: row.state || "",
+          postcode: row.postcode || "",
         });
       }
       setLoading(false);
