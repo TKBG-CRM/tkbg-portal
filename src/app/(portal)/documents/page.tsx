@@ -63,7 +63,13 @@ export default function PortalDocuments() {
       const { data: contact } = await supabase.from("contacts").select("id").eq("linked_user_id", user.id).single();
       if (!contact) return;
       setContactId(contact.id);
-      const { data: projects } = await supabase.from("projects").select("id").eq("client_id", contact.id);
+      // Include projects where the client is a co-purchaser, not just the
+      // primary client_id — co-clients have their own linked auth user and
+      // must see/upload to the same project. RLS enforces the same membership.
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id")
+        .or(`client_id.eq.${contact.id},co_client_ids.cs.{${contact.id}}`);
       setProjectIds((projects || []).map((p: any) => p.id));
     }
     load();
@@ -74,8 +80,14 @@ export default function PortalDocuments() {
     queryKey: ["portal-documents", contactId, projectIds],
     queryFn: async () => {
       if (!contactId) return [];
-      // Fetch docs for contact OR their projects
-      let query = supabase.from("documents").select("*").order("created_at", { ascending: false });
+      // Fetch docs for contact OR their projects. Select an explicit
+      // client-safe column list (never select("*") on a portal-read table) —
+      // RLS still gates which rows come back (client-safe categories on the
+      // client's project, plus the client's own uploads).
+      let query = supabase
+        .from("documents")
+        .select("id, name, file_url, file_type, file_size, category, project_id, contact_id, created_at")
+        .order("created_at", { ascending: false });
       if (projectIds.length > 0) {
         query = query.or(`contact_id.eq.${contactId},project_id.in.(${projectIds.join(",")})`);
       } else {
