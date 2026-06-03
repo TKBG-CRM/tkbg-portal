@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-  Home, FileText, MessageSquare, DollarSign, User, LogOut, Menu, X, FolderKanban,
+  Home, FileText, DollarSign, User, LogOut, Menu, X, FolderKanban,
   ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,6 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/deposits", label: "Deposits", icon: DollarSign },
   { href: "/profile", label: "Profile", icon: User },
 ];
