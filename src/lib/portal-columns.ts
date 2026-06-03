@@ -110,7 +110,6 @@ export const PORTAL_ALLOWED_ACTIVITY_TYPES = [
 // product review requested, contract requested from builder, etc.)
 // stay hidden even though their activity row passes the type filter.
 export const CLIENT_VISIBLE_STAGES = new Set<string>([
-  "discovery_meeting_completed",
   "initial_deposit_received",
   "preliminary_works_agreement",
   "contract_signed",
@@ -130,7 +129,6 @@ export const CLIENT_VISIBLE_STAGES = new Set<string>([
 // clientFacingStageLabel below to walk backwards from the project's
 // current stage to the most-recent milestone the client knows about.
 export const CLIENT_STAGE_ORDER = [
-  "discovery_meeting_completed",
   "initial_deposit_received",
   "preliminary_works_agreement",
   "contract_signed",
@@ -168,7 +166,6 @@ export function clientFacingStageLabel(
 // Friendly titles for the client-facing stage milestones. Falls back
 // to whatever the activity row already has if a stage isn't mapped.
 export const CLIENT_STAGE_TITLES: Record<string, string> = {
-  discovery_meeting_completed: "Discovery meeting completed",
   initial_deposit_received: "Initial deposit received — thank you!",
   preliminary_works_agreement: "Preliminary Works Agreement signed",
   contract_signed: "Building contract signed",
