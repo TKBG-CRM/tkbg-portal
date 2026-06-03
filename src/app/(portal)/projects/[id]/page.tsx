@@ -97,9 +97,10 @@ export default function PortalProjectDetail() {
   );
 
   // The client has paid their initial deposit once it's recorded on the
-  // project, regardless of whether the CRM stage has been advanced — so the
-  // "Initial deposit received" milestone should tick as soon as the deposit
-  // lands, not only when someone moves the stage.
+  // project (an amount/paid-at is set) OR the CRM has advanced the project to
+  // the deposit stage (e.g. when the onboarding email goes out). Either way
+  // the "Initial deposit received" milestone should read as done — clients
+  // shouldn't log in to find it un-ticked when they've already paid.
   const initialDepositReceived =
     !!project.initial_deposit_paid_at ||
     (Number(project.initial_deposit_amount) || 0) > 0;
@@ -161,7 +162,8 @@ export default function PortalProjectDetail() {
             {allStages.slice(0, 20).map((stage) => {
               const isCompleted =
                 stage.order < currentOrder ||
-                (stage.id === "initial_deposit_received" && initialDepositReceived);
+                (stage.id === "initial_deposit_received" &&
+                  (initialDepositReceived || stage.order <= currentOrder));
               const isCurrent = stage.id === project.stage && !isCompleted;
               return (
                 <div key={stage.id} className="flex items-center gap-3">
