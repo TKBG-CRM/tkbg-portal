@@ -32,7 +32,15 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-solina), Georgia, serif;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Headings inside the body-font context use the Helvetica heading face,
+     matching the CRM portal + branded email template. */
+  .font-body h1,
+  .font-body h2 {
+    font-family: var(--font-helvetica), "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
   }
 }

@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Lock, AlertCircle, Check } from "lucide-react";
+import { Loader2, AlertCircle, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
 
 type RecoveryStatus = "loading" | "ready" | "expired";
 
@@ -111,46 +110,54 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-12">
-      <Card className="w-full max-w-md border-neutral-200 shadow-lg">
-        <CardContent className="p-8">
-          <div className="flex flex-col items-center gap-3 mb-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logos/TURNKEY_LOGO_GOLD.svg"
-              alt="Turnkey Building Group"
-              className="h-24"
-            />
-            <div className="text-center">
-              <h1 className="text-xl font-semibold text-black">
-                {done ? "Password Updated" : "Set New Password"}
-              </h1>
-              <p className="text-xs text-neutral-500 mt-1 tracking-wide">
-                {done
-                  ? "You can now sign in with your new password"
-                  : "Create a new password for your client portal"}
-              </p>
-            </div>
+    <div className="min-h-screen flex flex-col font-body bg-[#f7f5f2]">
+      {/* Black header bar — matches portal header + branded email template */}
+      <div className="bg-black px-4 py-10 sm:py-14 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logos/TURNKEY_WORDMARK_WHITE.svg"
+          alt="Turnkey Building Group"
+          className="h-4 sm:h-5 mx-auto"
+        />
+        <p className="mt-3 text-[9px] uppercase tracking-[0.25em] text-brand-gold font-body font-medium">
+          Client Portal
+        </p>
+      </div>
+
+      {/* Gold accent line */}
+      <div className="h-[2px] bg-brand-gold" />
+
+      <div className="flex-1 flex items-start justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h1 className="text-xl font-semibold text-black font-heading">
+              {done ? "Password updated" : "Set a new password"}
+            </h1>
+            <p className="text-sm text-neutral-500 mt-1 font-body">
+              {done
+                ? "You can now sign in with your new password"
+                : "Create a new password for your client portal"}
+            </p>
           </div>
 
           {done ? (
             <div className="text-center space-y-4 py-4">
-              <div className="h-14 w-14 rounded-full bg-[#957B60]/10 flex items-center justify-center mx-auto">
-                <Check className="h-7 w-7 text-[#957B60]" />
+              <div className="h-14 w-14 rounded-full bg-brand-gold/10 flex items-center justify-center mx-auto">
+                <Check className="h-7 w-7 text-brand-gold" />
               </div>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-500 font-body">
                 Your password has been updated successfully.
               </p>
               <Button
                 onClick={() => router.push("/login")}
-                className="bg-[#957B60] hover:bg-[#7d6750] text-white"
+                className="bg-black hover:bg-neutral-800 text-white uppercase text-xs tracking-widest h-11"
               >
                 Go to sign in
               </Button>
             </div>
           ) : recoveryStatus === "loading" ? (
             <div className="flex flex-col items-center justify-center py-8 gap-3 text-sm text-neutral-500">
-              <Loader2 className="h-6 w-6 animate-spin text-[#957B60]" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
               Verifying your reset link…
             </div>
           ) : recoveryStatus === "expired" ? (
@@ -165,7 +172,7 @@ export default function ResetPasswordPage() {
               </div>
               <Button
                 onClick={() => router.push("/login")}
-                className="bg-[#957B60] hover:bg-[#7d6750] text-white"
+                className="bg-black hover:bg-neutral-800 text-white uppercase text-xs tracking-widest h-11"
               >
                 Back to sign in
               </Button>
@@ -173,7 +180,9 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="new-password" className="text-sm">New password</Label>
+                <Label htmlFor="new-password" className="text-xs text-neutral-600">
+                  New password
+                </Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -184,12 +193,14 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
 
               <div>
-                <Label htmlFor="confirm-password" className="text-sm">Confirm password</Label>
+                <Label htmlFor="confirm-password" className="text-xs text-neutral-600">
+                  Confirm password
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -199,7 +210,7 @@ export default function ResetPasswordPage() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   disabled={loading}
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
 
@@ -213,7 +224,7 @@ export default function ResetPasswordPage() {
               <Button
                 type="submit"
                 disabled={loading || !password || !confirm}
-                className="w-full bg-[#957B60] hover:bg-[#7d6750] text-white"
+                className="w-full bg-black hover:bg-neutral-800 text-white uppercase text-xs tracking-widest h-11"
               >
                 {loading ? (
                   <>
@@ -221,16 +232,13 @@ export default function ResetPasswordPage() {
                     Updating...
                   </>
                 ) : (
-                  <>
-                    <Lock className="h-4 w-4 mr-2" />
-                    Update password
-                  </>
+                  "Update Password"
                 )}
               </Button>
             </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
