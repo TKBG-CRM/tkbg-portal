@@ -17,7 +17,12 @@ import {
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { PORTAL_PROJECT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
+import {
+  PORTAL_PROJECT_COLUMNS,
+  PORTAL_DEPOSIT_PLAN_COLUMNS,
+  PORTAL_DEPOSIT_PAYMENT_COLUMNS,
+  scrubCommission,
+} from "@/lib/portal-columns";
 import { type Allocation, computeAllocationSplit } from "@/lib/deposits";
 
 const fmt = (n: any) =>
@@ -95,7 +100,7 @@ export default function PortalDeposits() {
       if (!projectIds.length) return [];
       const { data } = await supabase
         .from("deposit_payment_plans")
-        .select("*")
+        .select(PORTAL_DEPOSIT_PLAN_COLUMNS)
         .in("project_id", projectIds);
       return data || [];
     },
@@ -109,7 +114,7 @@ export default function PortalDeposits() {
       const planIds = plans.map((p: any) => p.id);
       const { data } = await supabase
         .from("deposit_plan_payments")
-        .select("*")
+        .select(PORTAL_DEPOSIT_PAYMENT_COLUMNS)
         .in("plan_id", planIds)
         .order("instalment_number");
       return data || [];

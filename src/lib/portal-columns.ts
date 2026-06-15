@@ -93,6 +93,18 @@ export const PORTAL_CONTACT_COLUMNS = [
 export const PORTAL_ACTIVITY_COLUMNS =
   "id, project_id, type, title, description, metadata, created_at";
 
+// Client-safe columns on the deposit tables. A `select("*")` on
+// `deposit_payment_plans` ships internal-only fields into the portal
+// JSON payload — `sales_rep_id`, `client_name`, `client_email`,
+// `reminder_day_of_month`, `send_client_reminders` — none of which the
+// client UI needs. Select through these lists instead so only the
+// figures the deposits page actually renders leave the database.
+export const PORTAL_DEPOSIT_PLAN_COLUMNS =
+  "id, project_id, total_deposit_amount, monthly_instalment, amount_paid, number_of_months, status";
+
+export const PORTAL_DEPOSIT_PAYMENT_COLUMNS =
+  "id, plan_id, instalment_number, due_date, amount, status, paid_date";
+
 // Strict allowlist of activity TYPES that may surface in the portal
 // feed. Everything else (tasks, notes, internal calls, "Auto-task:
 // Order gift hamper", rep notes, commission rows, etc.) is invisible

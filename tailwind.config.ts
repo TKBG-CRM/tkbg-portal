@@ -56,7 +56,9 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        sans: ["var(--font-helvetica)", '"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        heading: ["var(--font-helvetica)", '"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        body: ["var(--font-solina)", "Georgia", "serif"],
       },
     },
   },
