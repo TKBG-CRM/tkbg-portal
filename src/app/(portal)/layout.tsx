@@ -5,19 +5,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Home, FileText, DollarSign, User, LogOut, Menu, X, FolderKanban,
-  ShieldAlert,
-} from "lucide-react";
+import { LogOut, Menu, X, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/deposits", label: "Deposits", icon: DollarSign },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/", label: "Dashboard" },
+  { href: "/projects", label: "Projects" },
+  { href: "/documents", label: "Documents" },
+  { href: "/deposits", label: "Deposits" },
+  { href: "/profile", label: "Profile" },
 ];
+
+function isActivePath(pathname: string, href: string): boolean {
+  return pathname === href || (href !== "/" && pathname.startsWith(href));
+}
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,8 +58,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Top navigation (+ optional admin preview banner, both sticky together) */}
+    <div className="min-h-screen bg-[#f7f5f2] flex flex-col">
+      {/* Header (+ optional admin preview banner) — sticky together */}
       <div className="sticky top-0 z-50">
         {adminPreviewName && (
           <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm">
@@ -81,99 +82,131 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             </button>
           </div>
         )}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14">
-            {/* Brand */}
-            <Link href="/" className="flex items-center">
-              <img
-                src="/logos/TURNKEY_WORDMARK_GOLD.svg"
-                alt="Turnkey"
-                className="h-3.5"
-              />
-            </Link>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "relative flex items-center gap-2 px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "text-black font-medium"
-                        : "text-gray-500 hover:text-black"
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4", isActive ? "text-black" : "text-gray-400")} />
-                    {item.label}
-                    {/* Gold underline for active */}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#957B60] rounded-full" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Right side */}
-            <div className="flex items-center gap-3">
-              {clientName && (
-                <span className="hidden sm:inline text-sm text-gray-500">
-                  {clientName}
-                </span>
-              )}
-              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-gray-400 hover:text-black">
-                <LogOut className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden text-gray-400"
-                onClick={() => setMobileOpen(!mobileOpen)}
-              >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-            </div>
-          </div>
+        {/* Brand bar — centred white wordmark on black, matching the email + CRM shell */}
+        <div className="bg-black px-4 py-5 sm:py-6 text-center">
+          <Link href="/" className="inline-block">
+            <img
+              src="/logos/TURNKEY_WORDMARK_WHITE.svg"
+              alt="Turnkey Building Group"
+              className="h-4 sm:h-5 mx-auto"
+            />
+          </Link>
+          <p className="mt-2 text-[9px] uppercase tracking-[0.25em] text-brand-gold font-medium">
+            Client Portal
+          </p>
         </div>
 
-        {/* Mobile nav */}
-        {mobileOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm",
-                    isActive
-                      ? "bg-[rgba(149,123,96,0.08)] text-black font-medium"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-black"
-                  )}
+        {/* Gold accent line */}
+        <div className="h-[2px] bg-brand-gold" />
+
+        {/* Navigation bar */}
+        <div className="bg-white border-b border-neutral-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-11">
+              {/* Desktop nav */}
+              <nav className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => {
+                  const active = isActivePath(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-medium uppercase tracking-wider rounded transition-colors",
+                        active
+                          ? "text-brand-gold"
+                          : "text-neutral-500 hover:text-black"
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Desktop sign out */}
+              <div className="hidden md:flex items-center gap-3">
+                {clientName && (
+                  <span className="text-[11px] text-neutral-400 max-w-[180px] truncate">
+                    {clientName}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-xs text-neutral-500 hover:text-black h-7 px-2"
                 >
-                  <Icon className={cn("h-4 w-4", isActive ? "text-black" : "text-gray-400")} />
-                  {item.label}
-                </Link>
-              );
-            })}
+                  <LogOut className="h-3 w-3 mr-1.5" /> Sign out
+                </Button>
+              </div>
+
+              {/* Mobile menu toggle */}
+              <button
+                className="md:hidden p-2 text-neutral-600 ml-auto"
+                onClick={() => setMobileOpen((v) => !v)}
+                aria-label="Toggle menu"
+              >
+                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+
+            {/* Mobile nav */}
+            {mobileOpen && (
+              <div className="md:hidden pb-3 border-t border-neutral-100 pt-2">
+                <nav className="flex flex-col gap-0.5">
+                  {navItems.map((item) => {
+                    const active = isActivePath(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "px-3 py-2.5 text-sm rounded-md transition-colors",
+                          active
+                            ? "text-brand-gold font-medium"
+                            : "text-neutral-600 hover:bg-neutral-50"
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                  <button
+                    onClick={handleSignOut}
+                    className="px-3 py-2.5 text-sm text-left text-neutral-500 hover:bg-neutral-50 rounded-md flex items-center gap-2 mt-1"
+                  >
+                    <LogOut className="h-3.5 w-3.5" /> Sign out
+                    {clientName && (
+                      <span className="ml-auto text-xs text-neutral-400 truncate">
+                        {clientName}
+                      </span>
+                    )}
+                  </button>
+                </nav>
+              </div>
+            )}
           </div>
-        )}
-      </header>
-      </div>{/* end sticky wrapper */}
+        </div>
+      </div>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-neutral-200 bg-white py-6 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-500">
+          <span>
+            &copy; {new Date().getFullYear()} Turnkey Building Group. All rights
+            reserved.
+          </span>
+          <span className="tracking-wide">The Art of Creating Homes.</span>
+        </div>
+      </footer>
     </div>
   );
 }

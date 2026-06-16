@@ -56,7 +56,11 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        sans: ["var(--font-helvetica)", '"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        // Brand manual: Headlines = Helvetica Bold Condensed
+        heading: ["var(--font-helvetica)", '"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],
+        // Brand manual: Body + Subheaders = GTF Solina Regular/Medium
+        body: ["var(--font-solina)", "Georgia", "serif"],
       },
     },
   },

@@ -35,4 +35,25 @@
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Brand fonts (per Brand Manual), matching the CRM:
+     Body/subheaders = GTF Solina Regular/Medium (the font-body class on <body>
+     sets Solina as the base), Headlines = Helvetica Bold Condensed. These
+     rules switch headings to Helvetica within the brand-typographic body. */
+  .font-body h1,
+  .font-body h2,
+  .font-body h3 {
+    font-family: var(--font-helvetica), "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  /* iOS Safari auto-zooms a focused input whose font-size is below 16px.
+     Force the minimum on mobile so forms don't yank the viewport in on tap. */
+  @media (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
