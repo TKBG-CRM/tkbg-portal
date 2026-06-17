@@ -145,7 +145,7 @@ export default function PortalProjectDetail() {
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold text-black tracking-tight">{project.name}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <Badge className="bg-[#957B60]/10 text-[#957B60] border-0">{headerStageLabel}</Badge>
+            <Badge className="bg-brand-gold/10 text-brand-gold border-0">{headerStageLabel}</Badge>
             <span className="text-xs text-neutral-400">{progress}% complete</span>
           </div>
         </div>
@@ -170,19 +170,19 @@ export default function PortalProjectDetail() {
                   {isCompleted ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                   ) : isCurrent ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#957B60] bg-[#957B60]/20 shrink-0" />
+                    <div className="w-4 h-4 rounded-full border-2 border-brand-gold bg-brand-gold/20 shrink-0" />
                   ) : (
                     <Circle className="h-4 w-4 text-neutral-300 shrink-0" />
                   )}
                   <span className={cn(
                     "text-sm",
                     isCompleted && "text-neutral-400",
-                    isCurrent && "font-semibold text-[#957B60]",
+                    isCurrent && "font-semibold text-brand-gold",
                     !isCompleted && !isCurrent && "text-neutral-400"
                   )}>
                     {stage.label}
                   </span>
-                  {isCurrent && <Badge className="bg-[#957B60] text-white text-[10px] ml-auto">Current</Badge>}
+                  {isCurrent && <Badge className="bg-brand-gold text-white text-[10px] ml-auto">Current</Badge>}
                 </div>
               );
             })}
@@ -251,16 +251,16 @@ export default function PortalProjectDetail() {
                 return (
                   <div key={d.label} className={cn(
                     "flex items-center gap-3 p-3 rounded-lg border",
-                    isPast ? "bg-red-50 border-red-200" : isUpcoming ? "bg-[#957B60]/5 border-[#957B60]/20" : "bg-neutral-50 border-neutral-100"
+                    isPast ? "bg-red-50 border-red-200" : isUpcoming ? "bg-brand-gold/5 border-brand-gold/20" : "bg-neutral-50 border-neutral-100"
                   )}>
-                    <Icon className={cn("h-4 w-4 shrink-0", isPast ? "text-red-500" : isUpcoming ? "text-[#957B60]" : "text-neutral-400")} />
+                    <Icon className={cn("h-4 w-4 shrink-0", isPast ? "text-red-500" : isUpcoming ? "text-brand-gold" : "text-neutral-400")} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-neutral-400">{d.label}</p>
                       <p className="text-sm font-medium text-neutral-700">{format(new Date(d.date), "d MMMM yyyy")}</p>
                     </div>
                     <span className={cn(
                       "text-xs font-semibold",
-                      isPast ? "text-red-500" : isUpcoming ? "text-[#957B60]" : "text-neutral-400"
+                      isPast ? "text-red-500" : isUpcoming ? "text-brand-gold" : "text-neutral-400"
                     )}>
                       {isPast ? `${Math.abs(days)}d ago` : days === 0 ? "Today" : `${days}d`}
                     </span>
@@ -278,7 +278,7 @@ export default function PortalProjectDetail() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium text-black flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-[#957B60]" />
+                <DollarSign className="h-4 w-4 text-brand-gold" />
                 Deposit Progress
               </CardTitle>
               <Link href="/deposits">

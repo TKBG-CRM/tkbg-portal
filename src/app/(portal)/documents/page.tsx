@@ -147,7 +147,7 @@ export default function PortalDocuments() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-black tracking-tight">Documents</h1>
-        <Button className="bg-[#957B60] hover:bg-[#7a6550] text-white gap-2" onClick={() => setUploadOpen(true)}>
+        <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2" onClick={() => setUploadOpen(true)}>
           <Upload className="h-4 w-4" /> Upload Document
         </Button>
       </div>
@@ -242,7 +242,7 @@ export default function PortalDocuments() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)}>Cancel</Button>
-            <Button className="bg-[#957B60] hover:bg-[#7a6550] text-white" onClick={handleUpload} disabled={!uploadFile || uploading}>
+            <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white" onClick={handleUpload} disabled={!uploadFile || uploading}>
               {uploading ? "Uploading..." : "Upload"}
             </Button>
           </DialogFooter>

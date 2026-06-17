@@ -112,7 +112,7 @@ export default function PortalDashboard() {
           <p className="text-sm text-neutral-500 mt-1">Here&apos;s the latest on your build journey</p>
         </div>
         {unreadCount > 0 && (
-          <Badge className="bg-[#957B60] text-white gap-1">
+          <Badge className="bg-brand-gold text-white gap-1">
             <Bell className="h-3 w-3" /> {unreadCount} new
           </Badge>
         )}
@@ -155,20 +155,20 @@ export default function PortalDashboard() {
           return (
             <Card key={project.id} className="border border-neutral-200 shadow-sm overflow-hidden">
               <div className="h-1 bg-neutral-100">
-                <div className="h-full bg-[#957B60] transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-brand-gold transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-medium text-black">{project.name}</CardTitle>
                   <Badge variant="outline" className={cn(
-                    project.status === "active" && "border-[#957B60]/30 text-[#957B60]",
+                    project.status === "active" && "border-brand-gold/30 text-brand-gold",
                     project.status === "completed" && "border-green-300 text-green-700",
                   )}>
                     {project.status}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge className="bg-[#957B60]/10 text-[#957B60] border-0">{stageLabel}</Badge>
+                  <Badge className="bg-brand-gold/10 text-brand-gold border-0">{stageLabel}</Badge>
                   <span className="text-xs text-neutral-400">{progress}% complete</span>
                 </div>
               </CardHeader>
@@ -203,7 +203,7 @@ export default function PortalDashboard() {
                       return (
                         <div key={d.label} className={cn(
                           "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border",
-                          isUpcoming ? "bg-[#957B60]/5 border-[#957B60]/20 text-[#957B60]" : "bg-neutral-50 border-neutral-200 text-neutral-500"
+                          isUpcoming ? "bg-brand-gold/5 border-brand-gold/20 text-brand-gold" : "bg-neutral-50 border-neutral-200 text-neutral-500"
                         )}>
                           <Calendar className="h-3 w-3" />
                           {d.label}: {format(new Date(d.date), "d MMM yyyy")}
@@ -222,7 +222,7 @@ export default function PortalDashboard() {
                 )}
 
                 <Link href={`/projects/${project.id}`}>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-[#957B60] border-[#957B60]/30 hover:bg-[#957B60]/5">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-brand-gold border-brand-gold/30 hover:bg-brand-gold/5">
                     View Full Details <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
