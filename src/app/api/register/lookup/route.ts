@@ -45,6 +45,22 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // Pull the lot number from the client's project (if one exists) so the
+  // onboarding deposit step can auto-fill the bank-transfer reference
+  // ("{Lot Number} {Last Name}"). Lot lives on projects, not contacts.
+  let lotNumber: string | null = null;
+  const { data: projects } = await admin
+    .from("projects")
+    .select("land_lot_number")
+    .eq("client_id", data.id)
+    .limit(1);
+  const lot = projects?.[0]?.land_lot_number;
+  if (typeof lot === "string" && lot.trim()) {
+    lotNumber = lot.trim();
+  } else if (typeof lot === "number") {
+    lotNumber = String(lot);
+  }
+
   return NextResponse.json({
     contact: {
       id: data.id,
@@ -57,6 +73,7 @@ export async function GET(req: NextRequest) {
       suburb: data.suburb,
       state: data.state,
       postcode: data.postcode,
+      lot_number: lotNumber,
     },
   });
 }

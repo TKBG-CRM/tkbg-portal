@@ -43,4 +43,15 @@
     font-family: var(--font-helvetica), "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: 700;
   }
+
+  /* Elegant serif display heading (Solina) for the branded hero copy — e.g.
+     "Let's get you set up." on the register flow. Opts a heading out of the
+     default Helvetica mapping above so it reads as the luxe serif used in the
+     branded emails. Higher specificity than `.font-body h1/h2` so it wins.
+     Solina ships 400/500 only, so we cap the weight at 500 (no faux-bold). */
+  .font-body h1.font-display,
+  .font-body h2.font-display {
+    font-family: var(--font-solina), Georgia, serif;
+    font-weight: 500;
+  }
 }
