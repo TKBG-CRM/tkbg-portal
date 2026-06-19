@@ -38,6 +38,13 @@ export async function updateSession(request: NextRequest) {
   // params for a session. The page itself handles the recovery handoff.
   const isResetPassword = request.nextUrl.pathname === "/reset-password";
   const isRegister = request.nextUrl.pathname === "/register";
+  // The self-registration API endpoints (token lookup + submit) are public by
+  // design — they validate the one-time registration token themselves with the
+  // service role. They MUST be reachable without a session, otherwise the auth
+  // middleware 307-redirects them to /login: the GET lookup then receives HTML
+  // instead of JSON, and the POST submit (307 preserves the method) lands on
+  // /login → 405 → "Submission failed". Everything else under /api stays gated.
+  const isRegisterApi = request.nextUrl.pathname.startsWith("/api/register/");
 
   if (
     !user &&
@@ -45,7 +52,8 @@ export async function updateSession(request: NextRequest) {
     !isAuthCallback &&
     !isAdminPreview &&
     !isResetPassword &&
-    !isRegister
+    !isRegister &&
+    !isRegisterApi
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
