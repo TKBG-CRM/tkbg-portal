@@ -6,5 +6,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Exclude static assets — including the intro reel (mp4/webm) and its
+  // poster — so the auth middleware doesn't 307-redirect them for
+  // unauthenticated visitors (the splash plays before sign-in).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
 };
