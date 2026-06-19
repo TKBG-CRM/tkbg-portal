@@ -82,7 +82,6 @@ function RegistrationForm() {
     mobile: "",
     address_line1: "",
     suburb: "",
-    city: "",
     state: "",
     postcode: "",
   });
@@ -144,10 +143,6 @@ function RegistrationForm() {
             mobile: c.phone || "",
             address_line1: c.address_line1 || "",
             suburb: c.suburb || "",
-            // Contact record has no separate city column — we only auto-fill
-            // from suburb when city is actually a bigger locality. Leave
-            // blank so the client types their own.
-            city: (c as any).city || "",
             state: c.state || "",
             postcode: c.postcode || "",
           }));
@@ -390,7 +385,6 @@ function RegistrationForm() {
           mobile: form.mobile,
           address_line1: form.address_line1,
           suburb: form.suburb,
-          city: form.city,
           state: form.state,
           postcode: form.postcode,
           additionalPurchasers: additionalPurchasersPayload,
@@ -644,10 +638,7 @@ function RegistrationForm() {
               <div className="space-y-4">
                 <SectionHeader icon={Home}>Current Address</SectionHeader>
                 <div><FieldLabel required>Street Address</FieldLabel><Input value={form.address_line1} onChange={(e) => upd("address_line1", e.target.value)} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><FieldLabel required>Suburb</FieldLabel><Input value={form.suburb} onChange={(e) => upd("suburb", e.target.value)} /></div>
-                  <div><FieldLabel required>City</FieldLabel><Input value={form.city} onChange={(e) => upd("city", e.target.value)} placeholder="e.g. Melbourne" /></div>
-                </div>
+                <div><FieldLabel required>Suburb</FieldLabel><Input value={form.suburb} onChange={(e) => upd("suburb", e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><FieldLabel required>State</FieldLabel>
                     <Select value={form.state} onValueChange={(v) => upd("state", v)}>

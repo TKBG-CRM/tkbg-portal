@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
     mobile,
     address_line1,
     suburb,
-    city,
     state,
     postcode,
     additionalPurchasers = [],
@@ -265,14 +264,9 @@ export async function POST(req: NextRequest) {
     // "Initial Deposit Received" stage requirements (and the Contract
     // Request form pre-fill) have real values without the sales rep
     // needing to re-type them.
-    // City sits between suburb and state in Australian addresses (e.g.
-    // "Lot 58 Whitworth Drive, Berwick, Melbourne VIC 3806"). If the
-    // client filled it, include it; otherwise the composed line stays
-    // the old 4-part shape.
     const composedCurrentAddress = [
       address_line1,
       suburb,
-      city,
       state,
       postcode,
     ]
