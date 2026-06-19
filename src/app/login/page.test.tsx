@@ -22,13 +22,19 @@ vi.mock("@/lib/supabase/client", () => ({
 describe("redesigned client portal login", () => {
   it("renders the branded look and copy", () => {
     render(<LoginPage />);
-    // Branded header + hero from the CRM redesign.
-    expect(screen.getByText("Client Portal")).toBeInTheDocument();
+    // "Client Portal" now sits below the header as a small gold tag
+    // (wrapped in · … · bullets) above the heading, no longer inside the
+    // black logo block.
+    expect(
+      screen.getByText((_, el) => el?.textContent === "· Client Portal ·")
+    ).toBeInTheDocument();
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
     expect(screen.getByText("Sign in to view your project")).toBeInTheDocument();
-    // White wordmark on the black bar.
+    // Larger white wordmark on the black bar — bumped from h-4/h-5 to
+    // h-8 → md:h-12 for prominence.
     const logo = screen.getByAltText("Turnkey Building Group") as HTMLImageElement;
     expect(logo.getAttribute("src")).toContain("TURNKEY_WORDMARK_WHITE");
+    expect(logo.className).toContain("h-8");
     // Form essentials still present.
     expect(screen.getByLabelText("Email address")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
