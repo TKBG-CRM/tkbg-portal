@@ -398,6 +398,12 @@ export async function POST(req: NextRequest) {
     salesRepId: project?.sales_rep_id ?? null,
   }).catch((err) => console.error("[register/submit] sales rep notify failed", err));
 
+  // Fire the CRM "New Sale" webhook so the team gets the loud cross-channel
+  // alert (critical Command Centre banner + branded email + SMS + 12h call
+  // task). Fire-and-forget: this is best-effort and must never block or fail
+  // the client's success screen, so it's wrapped and only logged on error.
+  await notifyCrmClientSignedUp(contact.id, project?.id ?? null);
+
   return NextResponse.json({ success: true });
 }
 
@@ -477,4 +483,53 @@ async function notifySalesRepOfRegistration(
       entity_id: ctx.contactId,
     }))
   );
+}
+
+/**
+ * Fire the CRM internal "New Sale" webhook. The CRM owns the loud,
+ * cross-channel dispatch (critical Command Centre banner, branded email from
+ * the rep's Gmail, alert SMS, and a 12h call task) — subsystems that live in
+ * the CRM monorepo, not here. We just tell it a client signed up.
+ *
+ * Best-effort by design: a missing secret or any network/HTTP error is logged
+ * and swallowed so the client's success screen is never blocked or failed.
+ */
+async function notifyCrmClientSignedUp(
+  contactId: string,
+  projectId: string | null
+): Promise<void> {
+  const secret = process.env.INTERNAL_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error(
+      "[register/submit] INTERNAL_WEBHOOK_SECRET not set — skipping CRM client-signed-up webhook"
+    );
+    return;
+  }
+  const crmUrl = (
+    process.env.NEXT_PUBLIC_CRM_URL || "https://crm.tkbg.com.au"
+  ).replace(/\/$/, "");
+  try {
+    const res = await fetch(`${crmUrl}/api/internal/client-signed-up`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contact_id: contactId,
+        project_id: projectId,
+        signed_up_at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(
+        "[register/submit] CRM client-signed-up webhook returned non-OK",
+        res.status,
+        detail
+      );
+    }
+  } catch (err) {
+    console.error("[register/submit] CRM client-signed-up webhook failed", err);
+  }
 }
