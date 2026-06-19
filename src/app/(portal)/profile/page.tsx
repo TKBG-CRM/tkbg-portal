@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Save, Mail, Phone, MapPin, Calendar, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { PORTAL_CONTACT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
+import { PageHeading } from "@/components/PortalHeading";
 
 export default function PortalProfile() {
   const supabase = createClient();
@@ -98,7 +99,7 @@ export default function PortalProfile() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-semibold text-black tracking-tight">My Profile</h1>
+      <PageHeading label="Profile" title="My Profile" />
 
       {/* Identity card */}
       <Card className="border border-neutral-200 shadow-sm">
@@ -129,16 +130,16 @@ export default function PortalProfile() {
       {/* Editable fields */}
       <Card className="border border-neutral-200 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium text-black">Contact Details</CardTitle>
+          <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black">Contact Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-neutral-400" /> Email</Label>
+              <Label className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-neutral-600"><Mail className="h-3.5 w-3.5 text-neutral-400" /> Email</Label>
               <Input value={form.email} onChange={(e) => update("email", e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-neutral-400" /> Phone</Label>
+              <Label className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-neutral-600"><Phone className="h-3.5 w-3.5 text-neutral-400" /> Phone</Label>
               <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="mt-1" />
             </div>
           </div>
@@ -146,26 +147,26 @@ export default function PortalProfile() {
           <Separator />
 
           <div>
-            <Label className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-neutral-400" /> Street Address</Label>
+            <Label className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-neutral-600"><MapPin className="h-3.5 w-3.5 text-neutral-400" /> Street Address</Label>
             <Input value={form.address_line1} onChange={(e) => update("address_line1", e.target.value)} className="mt-1" />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Suburb</Label>
+              <Label className="text-[11px] uppercase tracking-widest text-neutral-600">Suburb</Label>
               <Input value={form.suburb} onChange={(e) => update("suburb", e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>State</Label>
+              <Label className="text-[11px] uppercase tracking-widest text-neutral-600">State</Label>
               <Input value={form.state} onChange={(e) => update("state", e.target.value)} className="mt-1" />
             </div>
             <div>
-              <Label>Postcode</Label>
+              <Label className="text-[11px] uppercase tracking-widest text-neutral-600">Postcode</Label>
               <Input value={form.postcode} onChange={(e) => update("postcode", e.target.value)} className="mt-1" />
             </div>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2" onClick={handleSave} disabled={saving}>
+            <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2 uppercase text-xs tracking-widest" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4" />
               {saving ? "Saving..." : "Save Changes"}
             </Button>
@@ -181,7 +182,7 @@ export default function PortalProfile() {
       {/* Read-only info */}
       <Card className="border border-neutral-200 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium text-black">Account Info</CardTitle>
+          <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black">Account Info</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {contact.source && (

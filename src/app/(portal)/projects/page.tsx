@@ -16,6 +16,7 @@ import {
 } from "@/lib/stages";
 import { clientFacingStageLabel } from "@/lib/portal-columns";
 import { PORTAL_PROJECT_COLUMNS, scrubCommission } from "@/lib/portal-columns";
+import { PageHeading } from "@/components/PortalHeading";
 
 export default function PortalProjects() {
   const supabase = createClient();
@@ -61,7 +62,7 @@ export default function PortalProjects() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-black tracking-tight">My Projects</h1>
+      <PageHeading label="Your Projects" title="My Projects" />
 
       {projects.length === 0 ? (
         <Card>

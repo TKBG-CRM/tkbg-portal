@@ -84,18 +84,20 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         )}
 
         <header>
-          {/* Brand bar — centered white wordmark on black, matching the
-              email shell + CRM portal. */}
-          <div className="bg-black px-4 py-5 sm:py-6 text-center">
+          {/* Brand bar — large centered white wordmark on black, matching
+              the login header + branded email shell. The wordmark is the
+              primary mark; "Client Portal" sits beneath as a small, muted
+              secondary caption so it never competes with the logo. */}
+          <div className="bg-black px-4 py-8 sm:py-10 text-center">
             <Link href="/" className="inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logos/TURNKEY_WORDMARK_WHITE.svg"
                 alt="Turnkey Building Group"
-                className="h-4 sm:h-5 mx-auto"
+                className="h-8 sm:h-10 md:h-12 w-auto mx-auto"
               />
             </Link>
-            <p className="mt-2 text-[9px] uppercase tracking-[0.25em] text-brand-gold font-body font-medium">
+            <p className="mt-3 text-[9px] uppercase tracking-[0.3em] text-white/40 font-body">
               Client Portal
             </p>
           </div>

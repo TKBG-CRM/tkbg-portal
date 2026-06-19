@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Upload, Download, Search, Filter, File } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PageHeading } from "@/components/PortalHeading";
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -145,12 +146,16 @@ export default function PortalDocuments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-black tracking-tight">Documents</h1>
-        <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2" onClick={() => setUploadOpen(true)}>
-          <Upload className="h-4 w-4" /> Upload Document
-        </Button>
-      </div>
+      <PageHeading
+        label="Documents"
+        title="Documents"
+        subtitle="Contracts, drawings and paperwork for your build"
+        action={
+          <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2 uppercase text-xs tracking-widest" onClick={() => setUploadOpen(true)}>
+            <Upload className="h-4 w-4" /> Upload Document
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -220,15 +225,15 @@ export default function PortalDocuments() {
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Upload Document</DialogTitle>
+            <DialogTitle className="uppercase tracking-[0.18em] font-heading text-base">Upload Document</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label>File</Label>
+              <Label className="text-[11px] uppercase tracking-widest text-neutral-600">File</Label>
               <Input type="file" className="mt-1" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
             </div>
             <div>
-              <Label>Category</Label>
+              <Label className="text-[11px] uppercase tracking-widest text-neutral-600">Category</Label>
               <Select value={uploadCategory} onValueChange={setUploadCategory}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>

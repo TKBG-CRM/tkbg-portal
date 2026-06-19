@@ -24,6 +24,7 @@ import {
   scrubCommission,
 } from "@/lib/portal-columns";
 import { type Allocation, computeAllocationSplit } from "@/lib/deposits";
+import { PageHeading } from "@/components/PortalHeading";
 
 const fmt = (n: any) =>
   n == null || Number.isNaN(Number(n))
@@ -139,9 +140,11 @@ export default function PortalDeposits() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-black tracking-tight">
-        Deposits
-      </h1>
+      <PageHeading
+        label="Deposits"
+        title="Deposits"
+        subtitle="Your deposit balances and payment plan"
+      />
 
       {(projects as any[]).length === 0 ? (
         <Card>

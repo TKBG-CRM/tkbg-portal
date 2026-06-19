@@ -23,6 +23,7 @@ import {
   clientFacingStageLabel,
 } from "@/lib/portal-columns";
 import { computeDepositPaid } from "@/lib/deposits";
+import { SectionLabel } from "@/components/PortalHeading";
 
 const fmt = (n: any) => (n == null ? "\u2014" : `$${Number(n).toLocaleString("en-AU")}`);
 
@@ -142,9 +143,10 @@ export default function PortalProjectDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-black tracking-tight">{project.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
+        <div className="min-w-0">
+          <SectionLabel>Your Project</SectionLabel>
+          <h1 className="text-xl sm:text-2xl font-heading uppercase tracking-[0.16em] text-black leading-tight">{project.name}</h1>
+          <div className="flex items-center gap-2 mt-2">
             <Badge className="bg-brand-gold/10 text-brand-gold border-0">{headerStageLabel}</Badge>
             <span className="text-xs text-neutral-400">{progress}% complete</span>
           </div>
@@ -154,7 +156,7 @@ export default function PortalProjectDetail() {
       {/* Stage Timeline */}
       <Card className="border border-neutral-200 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium text-black">Build Progress</CardTitle>
+          <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black">Build Progress</CardTitle>
         </CardHeader>
         <CardContent>
           <Progress value={progress} className="h-2 mb-4" />
@@ -194,7 +196,7 @@ export default function PortalProjectDetail() {
         {/* Property Details */}
         <Card className="border border-neutral-200 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium text-black">Property Details</CardTitle>
+            <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black">Property Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {project.land_address && (
@@ -237,7 +239,7 @@ export default function PortalProjectDetail() {
         {/* Key Dates */}
         <Card className="border border-neutral-200 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium text-black">Key Dates</CardTitle>
+            <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black">Key Dates</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {keyDates.length === 0 ? (
@@ -277,7 +279,7 @@ export default function PortalProjectDetail() {
         <Card className="border border-neutral-200 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-black flex items-center gap-2">
+              <CardTitle className="text-sm font-heading uppercase tracking-[0.2em] text-black flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-brand-gold" />
                 Deposit Progress
               </CardTitle>

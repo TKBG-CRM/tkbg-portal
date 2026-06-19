@@ -13,6 +13,7 @@ import { Home, Calendar, MapPin, ArrowRight, Bell, FolderKanban } from "lucide-r
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getProgressPercentage, STAGE_CONFIG } from "@/lib/stages";
+import { PageHeading } from "@/components/PortalHeading";
 import {
   PORTAL_PROJECT_COLUMNS,
   scrubCommission,
@@ -104,19 +105,18 @@ export default function PortalDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-black tracking-tight">
-            Welcome back, {clientName.split(" ")[0]}
-          </h1>
-          <p className="text-sm text-neutral-500 mt-1">Here&apos;s the latest on your build journey</p>
-        </div>
-        {unreadCount > 0 && (
-          <Badge className="bg-brand-gold text-white gap-1">
-            <Bell className="h-3 w-3" /> {unreadCount} new
-          </Badge>
-        )}
-      </div>
+      <PageHeading
+        label="Dashboard"
+        title={`Welcome, ${clientName.split(" ")[0]}`}
+        subtitle="Here's the latest on your build journey"
+        action={
+          unreadCount > 0 ? (
+            <Badge className="bg-brand-gold text-white gap-1">
+              <Bell className="h-3 w-3" /> {unreadCount} new
+            </Badge>
+          ) : undefined
+        }
+      />
 
       {/* Projects */}
       {projects.length === 0 ? (
