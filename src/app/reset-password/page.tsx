@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthHeader, AuthPageLabel } from "@/components/AuthHeader";
 
 type RecoveryStatus = "loading" | "ready" | "expired";
 
@@ -111,25 +112,12 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex flex-col font-body bg-[#f7f5f2]">
-      {/* Black header bar — matches portal header + branded email template */}
-      <div className="bg-black px-4 py-10 sm:py-14 text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logos/TURNKEY_WORDMARK_WHITE.svg"
-          alt="Turnkey Building Group"
-          className="h-4 sm:h-5 mx-auto"
-        />
-        <p className="mt-3 text-[9px] uppercase tracking-[0.25em] text-brand-gold font-body font-medium">
-          Client Portal
-        </p>
-      </div>
-
-      {/* Gold accent line */}
-      <div className="h-[2px] bg-brand-gold" />
+      <AuthHeader />
 
       <div className="flex-1 flex items-start justify-center px-4 py-10 sm:py-14">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
+            <AuthPageLabel>Client Portal</AuthPageLabel>
             <h1 className="text-xl font-semibold text-black font-heading">
               {done ? "Password updated" : "Set a new password"}
             </h1>
