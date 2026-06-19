@@ -85,7 +85,7 @@ export default function PortalProjects() {
             );
             return (
               <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="border border-neutral-200 hover:border-[#957B60]/40 hover:shadow-md transition-all cursor-pointer">
+                <Card className="border border-neutral-200 hover:border-brand-gold/40 hover:shadow-md transition-all cursor-pointer">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -93,7 +93,7 @@ export default function PortalProjects() {
                           <h2 className="text-base font-semibold text-black truncate">
                             {project.name || "Unnamed Project"}
                           </h2>
-                          <Badge className="bg-[#957B60]/10 text-[#957B60] border-0 text-xs shrink-0">
+                          <Badge className="bg-brand-gold/10 text-brand-gold border-0 text-xs shrink-0">
                             {stageLabel}
                           </Badge>
                         </div>
@@ -116,7 +116,7 @@ export default function PortalProjects() {
                         <div className="mt-3">
                           <div className="flex items-center justify-between text-xs text-neutral-400 mb-1">
                             <span>Build progress</span>
-                            <span className="font-semibold text-[#957B60]">{progress}%</span>
+                            <span className="font-semibold text-brand-gold">{progress}%</span>
                           </div>
                           <Progress value={progress} className="h-2" />
                         </div>

@@ -105,7 +105,7 @@ export default function PortalProfile() {
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-              <AvatarFallback className="bg-[#957B60]/10 text-[#957B60] text-xl font-semibold">
+              <AvatarFallback className="bg-brand-gold/10 text-brand-gold text-xl font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -165,7 +165,7 @@ export default function PortalProfile() {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <Button className="bg-[#957B60] hover:bg-[#7a6550] text-white gap-2" onClick={handleSave} disabled={saving}>
+            <Button className="bg-brand-gold hover:bg-brand-gold-dark text-white gap-2" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4" />
               {saving ? "Saving..." : "Save Changes"}
             </Button>

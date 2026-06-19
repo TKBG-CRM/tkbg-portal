@@ -226,16 +226,16 @@ function ProjectDepositsCard({
     <Card className="border border-neutral-200 shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-medium text-black flex items-center gap-2">
-          <Landmark className="h-4 w-4 text-[#957B60]" />
+          <Landmark className="h-4 w-4 text-brand-gold" />
           {project.name || "Project"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Initial Deposit Received block — same shape as the CRM
             project page so reps and clients see matching figures. */}
-        <div className="rounded-md border border-[#957B60]/30 bg-[#957B60]/5 p-3 space-y-1">
+        <div className="rounded-md border border-brand-gold/30 bg-brand-gold/5 p-3 space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#957B60]">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-gold">
               Initial Deposit Received
             </p>
             {project.initial_deposit_paid_at && (
@@ -258,7 +258,7 @@ function ProjectDepositsCard({
             </p>
           )}
           {hasDestSplit && (
-            <p className="text-[11px] text-neutral-500 pt-1 border-t border-[#957B60]/15 mt-1">
+            <p className="text-[11px] text-neutral-500 pt-1 border-t border-brand-gold/15 mt-1">
               {[
                 Number(toLandDev) > 0 ? `${fmt(toLandDev)} → Land Developer` : null,
                 Number(toTkbg) > 0 ? `${fmt(toTkbg)} held in TKRE Trust` : null,
@@ -287,9 +287,9 @@ function ProjectDepositsCard({
             credit={split.build}
             paidAt={project.build_deposit_paid_at}
           />
-          <div className="p-3 rounded-lg bg-[#957B60]/5">
-            <p className="text-xs text-[#957B60]">Total Deposit Owing</p>
-            <p className="font-semibold text-[#957B60]">{fmt(totalOwing)}</p>
+          <div className="p-3 rounded-lg bg-brand-gold/5">
+            <p className="text-xs text-brand-gold">Total Deposit Owing</p>
+            <p className="font-semibold text-brand-gold">{fmt(totalOwing)}</p>
             {(totalAmt ?? 0) > 0 && (
               <p className="text-[11px] text-neutral-500 mt-0.5">
                 of {fmt(totalAmt)} total
@@ -304,7 +304,7 @@ function ProjectDepositsCard({
         {plan && (
           <div className="pt-2 border-t border-neutral-100 space-y-3">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-[#957B60]" />
+              <Calendar className="h-4 w-4 text-brand-gold" />
               <p className="text-sm font-medium text-black">Payment Plan</p>
               {plan.status && (
                 <Badge
@@ -453,7 +453,7 @@ function DepositLeg({
       ) : (
         <>
           {credit > 0 && (
-            <p className="text-[10px] text-[#957B60]">
+            <p className="text-[10px] text-brand-gold">
               {fmt(credit)} credited from initial
             </p>
           )}
