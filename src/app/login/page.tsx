@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle, Check } from "lucide-react";
 import { AuthHeader, AuthPageLabel } from "@/components/AuthHeader";
+import { SplashGate } from "@/components/SplashGate";
 
 type Mode = "login" | "forgot";
 
@@ -32,9 +33,12 @@ const ERROR_MESSAGES: Record<string, string> = {
 // Suspense from the default export.
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
-      <LoginPageInner />
-    </Suspense>
+    <>
+      <SplashGate />
+      <Suspense fallback={null}>
+        <LoginPageInner />
+      </Suspense>
+    </>
   );
 }
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthHeader, AuthPageLabel } from "@/components/AuthHeader";
+import { SplashGate } from "@/components/SplashGate";
 
 type RecoveryStatus = "loading" | "ready" | "expired";
 
@@ -112,6 +113,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex flex-col font-body bg-[#f7f5f2]">
+      <SplashGate />
       <AuthHeader />
 
       <div className="flex-1 flex items-start justify-center px-4 py-10 sm:py-14">

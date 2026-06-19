@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SplashGate } from "@/components/SplashGate";
 
 const STEPS = ["Purchaser Details", "Current Address", "Supporting Documents", "Set Password"];
 
@@ -672,12 +673,15 @@ function RegistrationForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#f7f5f2] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
-      </div>
-    }>
-      <RegistrationForm />
-    </Suspense>
+    <>
+      <SplashGate />
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#f7f5f2] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+        </div>
+      }>
+        <RegistrationForm />
+      </Suspense>
+    </>
   );
 }

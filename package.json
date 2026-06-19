@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "video:optimize": "node scripts/optimize-intro-video.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
