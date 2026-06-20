@@ -93,20 +93,24 @@ function LoginPageInner() {
     setError(null);
 
     const trimmed = email.trim().toLowerCase();
-    // Send users straight to /reset-password (not via /auth/callback).
-    // Supabase appends the recovery params to the redirect URL and the
-    // browser client auto-detects them on page load — same-device
-    // PKCE and cross-device hash-fragment flows both work without
-    // needing the round-trip through a route handler.
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
-      trimmed,
-      {
-        redirectTo: `${window.location.origin}/reset-password`,
+    // Branded reset flow: hand off to our own endpoint, which mints a Supabase
+    // recovery token and sends a Turnkey-branded email via the CRM (replacing
+    // Supabase's default supabase.io recovery mail). The endpoint always
+    // returns a generic success so it never reveals whether the address has an
+    // account — so we always show the "check your inbox" screen on a 2xx.
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        setError("Could not send reset email. Please try again.");
+        setLoading(false);
+        return;
       }
-    );
-
-    if (resetErr) {
-      setError(resetErr.message || "Could not send reset email. Please try again.");
+    } catch {
+      setError("Could not send reset email. Please try again.");
       setLoading(false);
       return;
     }
