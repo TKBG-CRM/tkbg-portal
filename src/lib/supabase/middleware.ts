@@ -45,6 +45,13 @@ export async function updateSession(request: NextRequest) {
   // instead of JSON, and the POST submit (307 preserves the method) lands on
   // /login → 405 → "Submission failed". Everything else under /api stays gated.
   const isRegisterApi = request.nextUrl.pathname.startsWith("/api/register/");
+  // The branded password-reset trigger (POST /api/auth/forgot-password) is
+  // public by design — it mints the recovery token with the service role itself
+  // and always returns a generic 200 (never revealing whether an account
+  // exists). Like /api/register/*, it MUST bypass the auth gate, otherwise the
+  // unauthenticated POST 307-redirects to /login (and 307 preserves the method,
+  // so it lands on /login → 405 and no reset email is ever sent).
+  const isAuthApi = request.nextUrl.pathname.startsWith("/api/auth/");
 
   if (
     !user &&
@@ -53,7 +60,8 @@ export async function updateSession(request: NextRequest) {
     !isAdminPreview &&
     !isResetPassword &&
     !isRegister &&
-    !isRegisterApi
+    !isRegisterApi &&
+    !isAuthApi
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
