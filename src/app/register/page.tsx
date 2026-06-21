@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { SplashGate } from "@/components/SplashGate";
 
-const STEPS = ["Purchaser Details", "Current Address", "Supporting Documents", "Set Password"];
+const STEPS = ["Purchaser Details", "Current Address", "Supporting Documents", "Broker & Conveyancer", "Set Password"];
 
 /**
  * Uppercase letter-spaced field label matching the branded email template.
@@ -101,6 +101,17 @@ function RegistrationForm() {
   const [idDocuments, setIdDocuments] = useState<File[]>([]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Optional broker + conveyancer details. If the client fills these in, the
+  // submit API creates them as CRM contacts and links them onto the project so
+  // sales staff don't have to chase and re-enter them.
+  const emptyPartner = { company_name: "", first_name: "", last_name: "", email: "", mobile: "" };
+  const [broker, setBroker] = useState({ ...emptyPartner });
+  const [conveyancer, setConveyancer] = useState({ ...emptyPartner });
+  const updBroker = (field: string, value: string) =>
+    setBroker((prev) => ({ ...prev, [field]: value }));
+  const updConveyancer = (field: string, value: string) =>
+    setConveyancer((prev) => ({ ...prev, [field]: value }));
 
   // Deposit step: client either already paid (upload remittance) or needs to
   // pay now (reveal the TKBG bank details + transfer reference).
@@ -391,6 +402,22 @@ function RegistrationForm() {
           idDocumentPaths,
           paymentRemittancePath,
           password,
+          // Optional — the API maps mobile → phone, dedupes by email, and links
+          // these onto the project as broker/conveyancer contacts.
+          broker: {
+            company_name: broker.company_name,
+            first_name: broker.first_name,
+            last_name: broker.last_name,
+            email: broker.email,
+            phone: broker.mobile,
+          },
+          conveyancer: {
+            company_name: conveyancer.company_name,
+            first_name: conveyancer.first_name,
+            last_name: conveyancer.last_name,
+            email: conveyancer.email,
+            phone: conveyancer.mobile,
+          },
         }),
       });
 
@@ -832,8 +859,56 @@ function RegistrationForm() {
               </div>
             )}
 
-            {/* Step 4 — Set Password */}
+            {/* Step 4 — Broker & Conveyancer (optional) */}
             {step === 3 && (
+              <div className="space-y-7">
+                <div>
+                  <SectionHeader icon={Landmark}>Broker &amp; Conveyancer</SectionHeader>
+                  <p className="text-sm text-neutral-500 -mt-2">
+                    Optional. If you already have a mortgage broker or a
+                    conveyancer/solicitor, add their details and we&apos;ll connect
+                    them to your project — so our team can liaise with them directly
+                    and you won&apos;t be asked for this again. You can leave this
+                    blank and add them later.
+                  </p>
+                </div>
+
+                {/* Mortgage broker */}
+                <div className="space-y-4">
+                  <h3 className="font-heading text-[10px] uppercase tracking-[0.18em] font-bold text-neutral-600">
+                    Mortgage Broker
+                  </h3>
+                  <div><FieldLabel>Company</FieldLabel><Input value={broker.company_name} onChange={(e) => updBroker("company_name", e.target.value)} placeholder="e.g. Aussie Home Loans" /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><FieldLabel>First Name</FieldLabel><Input value={broker.first_name} onChange={(e) => updBroker("first_name", e.target.value)} /></div>
+                    <div><FieldLabel>Last Name</FieldLabel><Input value={broker.last_name} onChange={(e) => updBroker("last_name", e.target.value)} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><FieldLabel>Email</FieldLabel><Input type="email" value={broker.email} onChange={(e) => updBroker("email", e.target.value)} /></div>
+                    <div><FieldLabel>Mobile</FieldLabel><Input value={broker.mobile} onChange={(e) => updBroker("mobile", e.target.value)} /></div>
+                  </div>
+                </div>
+
+                {/* Conveyancer / solicitor */}
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="font-heading text-[10px] uppercase tracking-[0.18em] font-bold text-neutral-600">
+                    Conveyancer / Solicitor
+                  </h3>
+                  <div><FieldLabel>Company</FieldLabel><Input value={conveyancer.company_name} onChange={(e) => updConveyancer("company_name", e.target.value)} placeholder="e.g. Smith Conveyancing" /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><FieldLabel>First Name</FieldLabel><Input value={conveyancer.first_name} onChange={(e) => updConveyancer("first_name", e.target.value)} /></div>
+                    <div><FieldLabel>Last Name</FieldLabel><Input value={conveyancer.last_name} onChange={(e) => updConveyancer("last_name", e.target.value)} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><FieldLabel>Email</FieldLabel><Input type="email" value={conveyancer.email} onChange={(e) => updConveyancer("email", e.target.value)} /></div>
+                    <div><FieldLabel>Mobile</FieldLabel><Input value={conveyancer.mobile} onChange={(e) => updConveyancer("mobile", e.target.value)} /></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5 — Set Password */}
+            {step === 4 && (
               <div className="space-y-4">
                 <SectionHeader icon={Lock}>Set Your Password</SectionHeader>
                 <p className="text-sm text-neutral-500">

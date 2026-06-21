@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { mergeRegistrationFiles } from "@/lib/registration-files";
 import { assemblePurchasers } from "@/lib/registration-purchasers";
+import { linkRegistrationPartners } from "@/lib/registration-partners";
 import { STAGE_CONFIG } from "@/lib/stages";
 
 /**
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
     idDocumentPaths = [],
     paymentRemittancePath = null,
     password,
+    // Optional broker / conveyancer the client supplied — turned into CRM
+    // contacts and linked onto the project below so staff don't re-enter them.
+    broker = null,
+    conveyancer = null,
   } = body ?? {};
 
   // A resolvable primary name is required — either the split parts (first +
@@ -253,7 +258,7 @@ export async function POST(req: NextRequest) {
   // the next project stage.
   const { data: projects } = await admin
     .from("projects")
-    .select("id, name, sales_rep_id, stage, stage_requirements_met")
+    .select("id, name, sales_rep_id, stage, stage_requirements_met, broker_id, conveyancer_id")
     .eq("client_id", contact.id)
     .limit(1);
 
@@ -342,6 +347,27 @@ export async function POST(req: NextRequest) {
           { rows: rowsToInsert.length, contact_id: contact.id, project_id: project.id }
         );
       }
+    }
+
+    // Create/reuse the broker + conveyancer contacts the client optionally
+    // supplied and link them onto this project (filling gaps only — never
+    // overwriting a partner the sales team already set). Best-effort: a failure
+    // here must never block the client's registration.
+    try {
+      await linkRegistrationPartners(admin, {
+        projectId: project.id,
+        salesRepId: (project as any).sales_rep_id ?? null,
+        existingBrokerId: (project as any).broker_id ?? null,
+        existingConveyancerId: (project as any).conveyancer_id ?? null,
+        broker,
+        conveyancer,
+      });
+    } catch (err) {
+      console.error(
+        "[register/submit] failed to link broker/conveyancer",
+        err,
+        { contact_id: contact.id, project_id: project.id }
+      );
     }
 
     // Auto-advance the project to "Contract Request Received" when the
