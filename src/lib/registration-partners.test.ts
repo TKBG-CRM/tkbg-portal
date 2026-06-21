@@ -2,7 +2,35 @@ import { describe, it, expect } from "vitest";
 import {
   normalizePartner,
   linkRegistrationPartners,
+  partnerContactColumns,
 } from "./registration-partners";
+
+// ── partnerContactColumns (denormalised onto the client contact) ─────────────
+describe("partnerContactColumns", () => {
+  it("maps broker + conveyancer onto the client contact's columns", () => {
+    expect(
+      partnerContactColumns(
+        { first_name: "Sam", last_name: "Broker", company_name: "Aussie", email: "Sam@X.com" },
+        { first_name: "Pat", last_name: "Convey", company_name: "Smith Law", email: "pat@law.com" }
+      )
+    ).toEqual({
+      broker_name: "Sam Broker",
+      broker_company: "Aussie",
+      broker_email: "sam@x.com",
+      conveyancer_name: "Pat Convey",
+      conveyancer_company: "Smith Law",
+      // no conveyancer_email column on contacts → not included
+    });
+  });
+
+  it("returns only the fields provided (never clears existing data)", () => {
+    expect(partnerContactColumns({ company_name: "Aussie" }, null)).toEqual({
+      broker_company: "Aussie",
+    });
+    expect(partnerContactColumns({}, {})).toEqual({});
+    expect(partnerContactColumns(null, undefined)).toEqual({});
+  });
+});
 
 // ── normalizePartner ─────────────────────────────────────────────────────────
 describe("normalizePartner", () => {
