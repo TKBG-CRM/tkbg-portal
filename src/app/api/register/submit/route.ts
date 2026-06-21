@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { mergeRegistrationFiles } from "@/lib/registration-files";
 import { assemblePurchasers } from "@/lib/registration-purchasers";
-import { linkRegistrationPartners } from "@/lib/registration-partners";
+import {
+  linkRegistrationPartners,
+  partnerContactColumns,
+} from "@/lib/registration-partners";
 import { STAGE_CONFIG } from "@/lib/stages";
 
 /**
@@ -229,6 +232,12 @@ export async function POST(req: NextRequest) {
     authUserId = created.user?.id ?? null;
   }
 
+  // Persist any broker/conveyancer the client entered onto the client contact
+  // itself — ALWAYS, even when no project exists yet — so the details are never
+  // lost, show up on the contact, and carry across to a project on conversion.
+  // (Project-level linking still happens below when a project exists.)
+  const partnerCols = partnerContactColumns(broker, conveyancer);
+
   const { error: updErr } = await admin
     .from("contacts")
     .update({
@@ -246,6 +255,7 @@ export async function POST(req: NextRequest) {
       purchasers,
       id_document_urls: mergedIdPaths,
       linked_user_id: authUserId,
+      ...partnerCols,
     })
     .eq("id", contact.id);
 

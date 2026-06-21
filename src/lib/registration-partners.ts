@@ -13,6 +13,50 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PartnerKind = "broker" | "conveyancer";
 
+/** {name, company, email} from a raw partner input, or null if nothing usable. */
+function rawPartner(
+  p: PartnerInput | null | undefined
+): { name: string; company: string; email: string } | null {
+  if (!p || typeof p !== "object") return null;
+  const name = [p.first_name, p.last_name]
+    .map((s) => (s || "").toString().trim())
+    .filter(Boolean)
+    .join(" ");
+  const company = (p.company_name || "").toString().trim();
+  const email = (p.email || "").toString().trim().toLowerCase();
+  if (!name && !company && !email) return null;
+  return { name, company, email };
+}
+
+/**
+ * Denormalised broker/conveyancer columns to set on the CLIENT contact
+ * (broker_name/company/email, conveyancer_name/company). Persisting these on the
+ * contact — independent of any project — means the details a client enters at
+ * registration are never lost, stay visible on the contact, and carry across
+ * when the contact is later converted to a project. (The `contacts` table has no
+ * conveyancer_email column, so a conveyancer's email is not stored here; it is
+ * kept on the separate conveyancer contact when a project exists.) Only
+ * non-empty values are returned so existing data is never cleared.
+ */
+export function partnerContactColumns(
+  broker: PartnerInput | null | undefined,
+  conveyancer: PartnerInput | null | undefined
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  const b = rawPartner(broker);
+  if (b) {
+    if (b.name) out.broker_name = b.name;
+    if (b.company) out.broker_company = b.company;
+    if (b.email) out.broker_email = b.email;
+  }
+  const c = rawPartner(conveyancer);
+  if (c) {
+    if (c.name) out.conveyancer_name = c.name;
+    if (c.company) out.conveyancer_company = c.company;
+  }
+  return out;
+}
+
 export interface PartnerInput {
   first_name?: string | null;
   last_name?: string | null;
