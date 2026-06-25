@@ -61,9 +61,12 @@ function SectionHeader({ icon: Icon, children }: { icon: LucideIcon; children: R
 function RegistrationForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  // Existing client (details already in the CRM): skip the full onboarding and
+  // go straight to setting a password to activate portal access.
+  const isAccess = searchParams.get("mode") === "access";
   const supabase = createClient();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(isAccess ? 4 : 0);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   // Brief branded "welcome aboard" moment shown after a successful submit while
@@ -568,14 +571,18 @@ function RegistrationForm() {
       <div className="h-[2px] bg-brand-gold" />
 
       <div className="max-w-2xl mx-auto px-4 pb-12 -mt-8 sm:-mt-10">
+        {!isAccess && (
         <div className="text-center mb-6">
           <p className="font-heading text-[10px] uppercase tracking-[0.3em] text-brand-gold font-medium">
             Step {step + 1} of {STEPS.length}
           </p>
         </div>
+        )}
 
         {/* Steps indicator — gold progress bars with uppercase caps labels;
-            completed steps get a small gold checkmark. */}
+            completed steps get a small gold checkmark. Hidden in access mode
+            (existing client only needs to set a password). */}
+        {!isAccess && (
         <div className="flex gap-2 mb-8 max-w-md mx-auto">
           {STEPS.map((s, i) => {
             const completed = i < step;
@@ -603,6 +610,7 @@ function RegistrationForm() {
             );
           })}
         </div>
+        )}
 
         <Card className="border-t-2 border-t-brand-gold shadow-md">
           <CardContent className="p-6">
@@ -910,7 +918,16 @@ function RegistrationForm() {
             {/* Step 5 — Set Password */}
             {step === 4 && (
               <div className="space-y-4">
-                <SectionHeader icon={Lock}>Set Your Password</SectionHeader>
+                <SectionHeader icon={Lock}>
+                  {isAccess ? "Set Up Your Portal Access" : "Set Your Password"}
+                </SectionHeader>
+                {isAccess && (
+                  <p className="text-sm text-neutral-600">
+                    Welcome{form.first_name ? `, ${form.first_name}` : ""}! Your details are
+                    already on file — there&apos;s nothing to fill out. Just choose a password to
+                    access your Turnkey client portal.
+                  </p>
+                )}
                 <p className="text-sm text-neutral-500">
                   Create a password to sign in to your Turnkey client portal. You&apos;ll use this together with your email ({form.email}) whenever you log in.
                 </p>
@@ -940,7 +957,7 @@ function RegistrationForm() {
 
             {/* Navigation */}
             <div className="flex justify-between items-center mt-8 pt-4 border-t">
-              {step > 0 ? (
+              {step > 0 && !isAccess ? (
                 <Button
                   variant="outline"
                   onClick={() => setStep((s) => s - 1)}
@@ -972,7 +989,7 @@ function RegistrationForm() {
                 >
                   {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   <Check className="h-4 w-4 mr-2" />
-                  Complete Registration
+                  {isAccess ? "Set Up Access" : "Complete Registration"}
                 </Button>
               )}
             </div>
