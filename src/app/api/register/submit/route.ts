@@ -7,6 +7,7 @@ import {
   partnerContactColumns,
 } from "@/lib/registration-partners";
 import { STAGE_CONFIG } from "@/lib/stages";
+import { composeRegistrationNotification } from "@/lib/registration-notification";
 
 /**
  * POST /api/register/submit
@@ -154,6 +155,13 @@ export async function POST(req: NextRequest) {
 
   const { idPaths: mergedIdPaths, remittancePaths: mergedRemittancePaths } =
     mergeRegistrationFiles(safeIdPaths, safeRemittance, folderPaths);
+
+  // Registration and payment are decoupled: the link is often sent so the
+  // client can register and THEN pay their initial deposit (the portal now
+  // shows them the bank details). Treat the deposit as paid only when the
+  // client actually attached a payment remittance/receipt — otherwise we must
+  // not claim they've paid or jump the project past the deposit stage.
+  const depositPaid = mergedRemittancePaths.length > 0;
 
   // The folder sweep can surface ID files that weren't attributed to any
   // purchaser in the request body (e.g. a stranded upload from an earlier
@@ -380,23 +388,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Auto-advance the project to "Contract Request Received" when the
-    // client completes portal registration. By this point they've
-    // confirmed details, paid the initial deposit and uploaded ID +
-    // payment confirmation — the rep's next move is to start the
-    // contract request, so move them straight there. We only nudge
-    // forward (never backward) to keep us safe against reps already
-    // mid-way through the contract pipeline. Stage ordering is sourced
-    // from the canonical STAGE_CONFIG so every stage is accounted for —
-    // a previous hand-maintained map omitted most stages, which made
-    // any project at an unlisted (often later) stage resolve to 0 and
-    // get dragged *backward* to Contract Request Received.
+    // Auto-advance the project to "Contract Request Received" ONLY when the
+    // client actually attached payment evidence. Registration alone no longer
+    // implies payment — clients frequently register first and pay afterwards —
+    // so a registration without a remittance leaves the stage untouched and
+    // the deposit stays visibly outstanding for the rep to chase. When a
+    // remittance IS attached, they've confirmed details + paid + uploaded ID,
+    // so the rep's next move is the contract request. We only nudge forward
+    // (never backward); stage ordering is sourced from the canonical
+    // STAGE_CONFIG so every stage is accounted for.
     const currentStage = (project as any).stage as string | null;
     const currentOrder = currentStage
       ? STAGE_CONFIG[currentStage]?.order ?? 0
       : 0;
     const targetOrder = STAGE_CONFIG.contract_request_received.order;
-    if (currentOrder < targetOrder) {
+    if (depositPaid && currentOrder < targetOrder) {
       const nowIso = new Date().toISOString();
       await admin
         .from("projects")
@@ -432,6 +438,7 @@ export async function POST(req: NextRequest) {
     clientName: primaryFullName,
     projectName: project?.name ?? null,
     salesRepId: project?.sales_rep_id ?? null,
+    depositPaid,
   }).catch((err) => console.error("[register/submit] sales rep notify failed", err));
 
   // Fire the CRM "New Sale" webhook so the team gets the loud cross-channel
@@ -450,12 +457,15 @@ async function notifySalesRepOfRegistration(
     clientName: string;
     projectName: string | null;
     salesRepId: string | null;
+    /** Whether the client attached payment evidence during registration. */
+    depositPaid: boolean;
   }
 ): Promise<void> {
-  // Portal registration implies the client has paid their initial deposit
-  // and submitted their details — sales rep AND every admin/director need
-  // to know. The in-app notification is best-effort; a failure doesn't
-  // cascade.
+  // Portal registration means the client submitted their details + ID; it does
+  // NOT necessarily mean they've paid (they often register first, then pay).
+  // The notification reflects which case this is so the rep knows whether to
+  // chase the deposit. Sales rep AND every admin/director are notified. The
+  // in-app notification is best-effort; a failure doesn't cascade.
   //
   // NOTE: The CRM monorepo also sends a branded email here via the sales
   // rep's Gmail. That subsystem (per-user Gmail OAuth + email templates)
@@ -502,12 +512,14 @@ async function notifySalesRepOfRegistration(
 
   if (recipientsMap.size === 0) return;
 
-  // In-app notifications for every recipient.
-  const notificationTitle = `${ctx.clientName || "Client"} registered and paid initial deposit`;
-  const notificationMessage =
-    `${ctx.clientName || "Client"} has completed their portal registration` +
-    `${ctx.projectName ? ` for ${ctx.projectName}` : ""}. ` +
-    `Initial deposit has been paid and purchaser details + ID + payment confirmation are on the contact record.`;
+  // In-app notifications for every recipient — wording depends on whether the
+  // client attached payment evidence.
+  const { title: notificationTitle, message: notificationMessage } =
+    composeRegistrationNotification({
+      clientName: ctx.clientName,
+      projectName: ctx.projectName,
+      depositPaid: ctx.depositPaid,
+    });
 
   await admin.from("notifications").insert(
     Array.from(recipientsMap.values()).map((r) => ({
