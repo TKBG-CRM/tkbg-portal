@@ -30,10 +30,15 @@ describe("no portal query uses select('*') or a bare select()", () => {
     expect(files.length).toBeGreaterThan(0);
     const offenders: string[] = [];
     const selectStar = /\.select\(\s*(["'`])\*\1\s*\)/;
-    const bareSelect = /\.select\(\s*\)/;
+    // Bare Supabase select — anchored to a `.from("table")` chain so DOM
+    // calls like a textarea's `ta.select()` aren't false-positives. Supabase
+    // always chains `.select()` directly off `.from(...)`, whereas the DOM
+    // `.select()` is a no-arg method on an element/ref.
+    const bareSupabaseSelect =
+      /\.from\(\s*(["'`])[^"'`]+\1\s*\)\s*\.select\(\s*\)/;
     for (const file of files) {
       const src = readFileSync(file, "utf8");
-      if (selectStar.test(src) || bareSelect.test(src)) {
+      if (selectStar.test(src) || bareSupabaseSelect.test(src)) {
         offenders.push(file.replace(SRC, "src"));
       }
     }
