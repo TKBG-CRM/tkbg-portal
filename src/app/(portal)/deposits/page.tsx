@@ -25,6 +25,7 @@ import {
 } from "@/lib/portal-columns";
 import { type Allocation, computeAllocationSplit } from "@/lib/deposits";
 import { PageHeading } from "@/components/PortalHeading";
+import { buildDepositBankAccounts, type BankAccount } from "@/lib/bank-details";
 
 const fmt = (n: any) =>
   n == null || Number.isNaN(Number(n))
@@ -58,6 +59,7 @@ const statusConfig: Record<
 export default function PortalDeposits() {
   const supabase = createClient();
   const [contactId, setContactId] = useState<string | null>(null);
+  const [contactLastName, setContactLastName] = useState<string>("");
   const [projectIds, setProjectIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -68,11 +70,12 @@ export default function PortalDeposits() {
       if (!user) return;
       const { data: contact } = await supabase
         .from("contacts")
-        .select("id")
+        .select("id, last_name")
         .eq("linked_user_id", user.id)
         .single();
       if (!contact) return;
       setContactId(contact.id);
+      setContactLastName((contact.last_name as string | null) || "");
       const { data: projects } = await supabase
         .from("projects")
         .select("id")
@@ -147,16 +150,29 @@ export default function PortalDeposits() {
       />
 
       {(projects as any[]).length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-neutral-400">
-            <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No deposit details yet</p>
-            <p className="text-sm mt-1">
-              Your sales rep will set these up once your project is in
-              contract.
-            </p>
-          </CardContent>
-        </Card>
+        // No project allocated yet (e.g. a client who has just registered
+        // via the portal link). We still show the standard Turnkey deposit
+        // accounts so they can pay their initial deposit straight away — the
+        // exact amount/reference is confirmed by their sales rep, but the
+        // where-to-pay shouldn't be blocked on the project being set up.
+        <>
+          <Card>
+            <CardContent className="py-8 text-center text-neutral-500">
+              <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium text-neutral-700">
+                Your project is being set up
+              </p>
+              <p className="text-sm mt-1">
+                Your sales rep is finalising your project. In the meantime, use
+                the account details below to pay your initial deposit.
+              </p>
+            </CardContent>
+          </Card>
+          <BankTransferDetails
+            accounts={buildDepositBankAccounts({ lastName: contactLastName })}
+            note="Confirm the exact deposit amount and payment reference with your sales rep before transferring."
+          />
+        </>
       ) : (
         (projects as any[]).map((project) => {
           const plan = planByProjectId.get(project.id);
@@ -169,6 +185,7 @@ export default function PortalDeposits() {
               project={project}
               plan={plan}
               payments={projectPayments}
+              clientLastName={contactLastName}
             />
           );
         })
@@ -177,14 +194,71 @@ export default function PortalDeposits() {
   );
 }
 
+function BankTransferDetails({
+  accounts,
+  note,
+}: {
+  accounts: BankAccount[];
+  note?: string;
+}) {
+  return (
+    <Card className="border border-neutral-200 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-medium text-black flex items-center gap-2">
+          <Landmark className="h-4 w-4 text-brand-gold" />
+          How to pay your deposit
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {accounts.map((account, i) => (
+          <div
+            key={i}
+            className="rounded-md border border-neutral-200 bg-neutral-50 p-3"
+          >
+            <p className="text-sm font-semibold text-neutral-800 mb-2">
+              {account.title}
+            </p>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+              {account.fields.map((field) => (
+                <div
+                  key={field.label}
+                  className="flex items-baseline justify-between gap-3 sm:block"
+                >
+                  <dt className="text-[11px] uppercase tracking-wide text-neutral-400">
+                    {field.label}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "text-sm text-neutral-800",
+                      field.mono && "font-mono tabular-nums"
+                    )}
+                  >
+                    {field.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+        <p className="text-xs text-neutral-500">
+          {note ||
+            "Please use the reference above so we can match your payment to your build."}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProjectDepositsCard({
   project,
   plan,
   payments,
+  clientLastName,
 }: {
   project: any;
   plan: any | null;
   payments: any[];
+  clientLastName: string;
 }) {
   const initialAmt =
     project.initial_deposit_amount == null
@@ -300,6 +374,18 @@ function ProjectDepositsCard({
             )}
           </div>
         </div>
+
+        {/* Where to pay — the standard Turnkey account, with the reference
+            auto-filled from this project's lot number + the client's surname.
+            Shown so clients can pay from the portal, not just from the
+            emailed details. */}
+        <BankTransferDetails
+          accounts={buildDepositBankAccounts({
+            lotNumber: project.land_lot_number,
+            lastName: clientLastName,
+            amount: initialAmt,
+          })}
+        />
 
         {/* Payment Plan — only shown when one exists for this project.
             Hidden entirely otherwise so clients aren't confused into
