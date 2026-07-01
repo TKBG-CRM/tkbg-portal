@@ -439,6 +439,7 @@ export async function POST(req: NextRequest) {
     projectName: project?.name ?? null,
     salesRepId: project?.sales_rep_id ?? null,
     depositPaid,
+    idProvided: mergedIdPaths.length > 0,
   }).catch((err) => console.error("[register/submit] sales rep notify failed", err));
 
   // Fire the CRM "New Sale" webhook so the team gets the loud cross-channel
@@ -459,6 +460,8 @@ async function notifySalesRepOfRegistration(
     salesRepId: string | null;
     /** Whether the client attached payment evidence during registration. */
     depositPaid: boolean;
+    /** Whether the client attached at least one ID document. */
+    idProvided: boolean;
   }
 ): Promise<void> {
   // Portal registration means the client submitted their details + ID; it does
@@ -519,6 +522,7 @@ async function notifySalesRepOfRegistration(
       clientName: ctx.clientName,
       projectName: ctx.projectName,
       depositPaid: ctx.depositPaid,
+      idProvided: ctx.idProvided,
     });
 
   await admin.from("notifications").insert(
