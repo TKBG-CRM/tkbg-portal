@@ -102,6 +102,9 @@ function RegistrationForm() {
   // ID documents for the PRIMARY purchaser. Each additional purchaser keeps
   // their own ID files on their entry in `additionalPurchasers`.
   const [idDocuments, setIdDocuments] = useState<File[]>([]);
+  // Primary ID is required to finish — unless the client explicitly opts to
+  // send it later. Captured so staff know to chase it.
+  const [idLater, setIdLater] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -833,7 +836,7 @@ function RegistrationForm() {
                 {/* ID Documents — one upload per purchaser so each person on
                     the contract attaches their own driver's licence / passport. */}
                 <div>
-                  <FieldLabel>ID Documents</FieldLabel>
+                  <FieldLabel required>ID Documents</FieldLabel>
                   <p className="text-xs text-neutral-400 mb-2">
                     Upload a photo of each purchaser&apos;s driver&apos;s licence or passport
                   </p>
@@ -842,7 +845,10 @@ function RegistrationForm() {
                       "primary",
                       `${primaryName || "Primary purchaser"} (You)`,
                       idDocuments,
-                      (files) => setIdDocuments((prev) => [...prev, ...files]),
+                      (files) => {
+                        setIdDocuments((prev) => [...prev, ...files]);
+                        if (files.length) setIdLater(false);
+                      },
                       (fileIdx) =>
                         setIdDocuments((prev) => prev.filter((_, j) => j !== fileIdx))
                     )}
@@ -860,6 +866,24 @@ function RegistrationForm() {
                     <p className="text-[11px] text-neutral-400 mt-2">
                       Added another purchaser? You can go back to Step 1 to add them, then upload their ID here.
                     </p>
+                  )}
+
+                  {/* Escape hatch: finish now, send ID later. Only offered when
+                      no ID is attached yet. */}
+                  {idDocuments.length === 0 && (
+                    <label className="mt-3 flex items-start gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 p-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={idLater}
+                        onChange={(e) => setIdLater(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-gold,#957B60)]"
+                      />
+                      <span className="text-xs text-neutral-600 leading-relaxed">
+                        I don&apos;t have my ID handy — I&apos;ll send it later. (We&apos;ll
+                        need a photo of your driver&apos;s licence or passport before your
+                        contract can be prepared.)
+                      </span>
+                    </label>
                   )}
                 </div>
 
@@ -972,11 +996,12 @@ function RegistrationForm() {
                   className="bg-brand-gold hover:bg-brand-gold-dark text-white uppercase text-xs tracking-widest"
                   onClick={() => setStep((s) => s + 1)}
                   disabled={
-                    step === 0 &&
-                    (!form.first_name.trim() ||
-                      !form.last_name.trim() ||
-                      !form.email ||
-                      !form.mobile)
+                    (step === 0 &&
+                      (!form.first_name.trim() ||
+                        !form.last_name.trim() ||
+                        !form.email ||
+                        !form.mobile)) ||
+                    (step === 2 && idDocuments.length === 0 && !idLater)
                   }
                 >
                   Next <ArrowRight className="h-4 w-4 ml-2" />
