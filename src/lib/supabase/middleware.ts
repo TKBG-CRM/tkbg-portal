@@ -52,6 +52,17 @@ export async function updateSession(request: NextRequest) {
   // unauthenticated POST 307-redirects to /login (and 307 preserves the method,
   // so it lands on /login → 405 and no reset email is ever sent).
   const isAuthApi = request.nextUrl.pathname.startsWith("/api/auth/");
+  // Referral-partner portal. Its login + preflight are public (a partner has no
+  // session yet); the rest of /referral needs a session but is gated by the page
+  // itself (it resolves a portal-enabled referral_partners row from the verified
+  // email). An unauthenticated /referral request goes to the REFERRAL login, not
+  // the client login.
+  const isReferralPublic =
+    request.nextUrl.pathname === "/referral/login" ||
+    request.nextUrl.pathname === "/api/portal/referral/preflight";
+  const isReferralRoute =
+    request.nextUrl.pathname === "/referral" ||
+    request.nextUrl.pathname.startsWith("/referral/");
 
   if (
     !user &&
@@ -61,10 +72,11 @@ export async function updateSession(request: NextRequest) {
     !isResetPassword &&
     !isRegister &&
     !isRegisterApi &&
-    !isAuthApi
+    !isAuthApi &&
+    !isReferralPublic
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = isReferralRoute ? "/referral/login" : "/login";
     return NextResponse.redirect(url);
   }
 
