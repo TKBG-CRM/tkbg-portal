@@ -59,7 +59,8 @@ export async function updateSession(request: NextRequest) {
   // the client login.
   const isReferralPublic =
     request.nextUrl.pathname === "/referral/login" ||
-    request.nextUrl.pathname === "/api/portal/referral/preflight";
+    request.nextUrl.pathname === "/referral/verify" ||
+    request.nextUrl.pathname === "/api/portal/referral/send-link";
   const isReferralRoute =
     request.nextUrl.pathname === "/referral" ||
     request.nextUrl.pathname.startsWith("/referral/");
