@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Loader2, Mail, AlertCircle, Check } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,36 +21,26 @@ export default function ReferralLoginPage() {
 
     const trimmed = email.trim().toLowerCase();
 
-    // Preflight gate: only portal-enabled referral partners may receive a magic
-    // link. Rejects staff and unknown emails with a clear message before any
-    // email is sent.
-    const preflight = await fetch("/api/portal/referral/preflight", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: trimmed }),
-    });
-    if (!preflight.ok) {
-      const { error: msg } = await preflight.json().catch(() => ({
-        error: "Could not verify account. Please try again.",
-      }));
-      setError(msg || "Could not verify account. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    const supabase = createClient();
-    // After the partner clicks the link, /auth/callback exchanges the code for
-    // a session then redirects to /referral.
-    const { error: otpErr } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/referral`,
-        shouldCreateUser: true,
-      },
-    });
-
-    if (otpErr) {
-      setError(otpErr.message);
+    // Mint + send a branded, Turnkey-from magic link. The endpoint validates the
+    // email is a portal-enabled referral partner (rejecting staff / unknowns),
+    // then delivers a sign-in link that lands back on this portal — not the
+    // default Supabase email, and not the CRM.
+    try {
+      const res = await fetch("/api/portal/referral/send-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({
+          error: "Could not send a sign-in link. Please try again.",
+        }));
+        setError(msg || "Could not send a sign-in link. Please try again.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("Could not send a sign-in link. Please try again.");
       setLoading(false);
       return;
     }
