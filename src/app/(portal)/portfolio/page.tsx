@@ -1,28 +1,11 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Wallet,
-  Landmark,
-  TrendingUp,
-  TrendingDown,
-  PiggyBank,
-  DollarSign,
-  Percent,
-  Building2,
-  Home,
-} from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { redirect } from "next/navigation";
+import { Wallet, Landmark, TrendingUp, PiggyBank, DollarSign, Percent, Home } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeading } from "@/components/PortalHeading";
 import { formatAmount } from "@/lib/numbers";
 import {
   portfolioSummary,
-  capitalGrowth,
-  annualCashFlow,
-  grossYield,
   totalLoanBalance,
   annualIncome,
   annualExpenses,
@@ -32,65 +15,37 @@ import {
 } from "@/lib/portfolio";
 import PortfolioProjection from "@/components/portfolio/PortfolioProjection";
 import PortfolioScenario from "@/components/portfolio/PortfolioScenario";
+import { PortfolioManager, type Property } from "./_components/portfolio-manager";
+
+export const dynamic = "force-dynamic";
 
 const AUD = (n: number) => formatAmount(Math.round(n)) || "$0";
 
-const STATUS_LABELS: Record<string, string> = {
-  owned: "Owned",
-  under_construction: "Under Construction",
-  sold: "Sold",
-};
-
-interface Row {
-  id: string;
-  name: string | null;
-  address_line1: string | null;
-  suburb: string | null;
-  property_type: string;
-  status: string | null;
-  current_valuation: number | null;
-  purchase_price: number | null;
-  weekly_rent: number | null;
-  loans: { current_balance: number | null; monthly_repayment: number | null; interest_rate_pct: number | null }[] | null;
-  cashflow_items: { amount: number; frequency: string; is_income: boolean }[] | null;
-}
-
-export default function PortalPortfolioPage() {
+export default async function PortalPortfolioPage() {
   const supabase = createClient();
-  const [contactId, setContactId] = useState<string | null>(null);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  useEffect(() => {
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: contact } = await supabase
-        .from("contacts")
-        .select("id")
-        .eq("linked_user_id", user.id)
-        .single();
-      if (contact) setContactId(contact.id);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { data: contact } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("linked_user_id", user.id)
+    .single();
+  if (!contact) redirect("/");
 
-  const { data: properties = [], isLoading } = useQuery<Row[]>({
-    queryKey: ["portal-portfolio", contactId],
-    enabled: !!contactId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("properties")
-        .select(
-          "id, name, address_line1, suburb, property_type, status, current_valuation, purchase_price, weekly_rent, loans:property_loans(current_balance, monthly_repayment, interest_rate_pct), cashflow_items(amount, frequency, is_income)"
-        )
-        .eq("contact_id", contactId)
-        .order("created_at", { ascending: false });
-      return (data ?? []) as unknown as Row[];
-    },
-  });
+  const { data: rows } = await supabase
+    .from("properties")
+    .select(
+      "id, contact_id, name, address_line1, suburb, state, postcode, property_type, status, purchase_price, purchase_date, current_valuation, valuation_date, weekly_rent, notes, loans:property_loans(id, property_id, lender, loan_type, original_amount, current_balance, interest_rate_pct, monthly_repayment, balance_as_of, notes), cashflow_items(id, property_id, category, label, amount, frequency, is_income)"
+    )
+    .eq("contact_id", contact.id)
+    .order("created_at", { ascending: true });
 
+  const properties = (rows ?? []) as Property[];
   const summary = portfolioSummary(properties as unknown as PortfolioProperty[]);
+
   const active = (properties as unknown as PortfolioProperty[]).filter((p) => p.status !== "sold");
   const projectionProps = active.map((p) => ({
     current_valuation: p.current_valuation,
@@ -122,22 +77,10 @@ export default function PortalPortfolioPage() {
       <PageHeading
         label="Portfolio"
         title="Portfolio"
-        subtitle="Your properties, loans and equity — and when you're on track to invest again"
+        subtitle="Track your properties, loans and equity — and see when you're on track to invest again"
       />
 
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-      ) : properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-neutral-500">
-            <Home className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
-            No properties in your portfolio yet. Your Turnkey consultant can add them for you.
-          </CardContent>
-        </Card>
-      ) : (
+      {properties.length > 0 && (
         <>
           {/* Summary */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -184,81 +127,24 @@ export default function PortalPortfolioPage() {
               />
             </div>
           )}
-
-          {/* Properties */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(properties as unknown as Row[])
-              .filter((p) => p.status !== "sold")
-              .map((p) => {
-                const debt = totalLoanBalance(p.loans);
-                const value = p.current_valuation ?? 0;
-                const equity = value - debt;
-                const growth = capitalGrowth(p as unknown as PortfolioProperty);
-                const cf = Math.round(annualCashFlow(p as unknown as PortfolioProperty));
-                const gy = grossYield(p as unknown as PortfolioProperty);
-                const Icon = p.property_type === "investment" ? Building2 : Home;
-                const up = growth.dollars >= 0;
-                return (
-                  <Card key={p.id} className="border-neutral-200">
-                    <CardContent className="p-4">
-                      <div className="mb-3 flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100">
-                            <Icon className="h-4 w-4 text-neutral-500" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-black">
-                              {p.name || [p.address_line1, p.suburb].filter(Boolean).join(", ") || "Property"}
-                            </div>
-                            <div className="text-xs text-neutral-500">
-                              {STATUS_LABELS[p.status ?? ""] || p.status}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-lg font-bold tabular-nums text-black">{AUD(value)}</div>
-                          {p.purchase_price != null && p.purchase_price > 0 && (
-                            <div
-                              className={
-                                "flex items-center justify-end gap-0.5 text-xs tabular-nums " +
-                                (up ? "text-green-600" : "text-red-600")
-                              }
-                            >
-                              {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {up ? "+" : ""}
-                              {AUD(growth.dollars)} ({growth.percent.toFixed(0)}%)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <Mini label="Equity" text={AUD(equity)} />
-                        <Mini label="CF /yr" text={AUD(cf)} tone={cf >= 0 ? "green" : "red"} />
-                        <Mini label="Yield" text={`${gy.toFixed(1)}%`} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-          </div>
         </>
       )}
-    </div>
-  );
-}
 
-function Mini({ label, text, tone }: { label: string; text: string; tone?: "green" | "red" }) {
-  return (
-    <div className="rounded-lg bg-neutral-50 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</div>
-      <div
-        className={
-          "text-sm font-medium tabular-nums " +
-          (tone === "green" ? "text-green-700" : tone === "red" ? "text-red-600" : "text-black")
-        }
-      >
-        {text}
-      </div>
+      {/* Add / edit properties, loans and cashflow */}
+      {properties.length === 0 ? (
+        <Card className="border-neutral-200">
+          <CardContent className="p-10 text-center">
+            <Home className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
+            <p className="mb-4 text-sm text-neutral-600">
+              You haven&apos;t added any properties yet. Add your home or an investment property to
+              see your equity and when you&apos;re ready to invest again.
+            </p>
+            <PortfolioManager contactId={contact.id} initialProperties={[]} showInlineAddOnly />
+          </CardContent>
+        </Card>
+      ) : (
+        <PortfolioManager contactId={contact.id} initialProperties={properties} />
+      )}
     </div>
   );
 }

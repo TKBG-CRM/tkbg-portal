@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "sonner";
 import { LogOut, Menu, X, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-[#f7f5f2] flex flex-col font-body">
+      <Toaster position="top-center" richColors />
       {/* Header (+ optional admin preview banner, all sticky together) */}
       <div className="sticky top-0 z-50">
         {adminPreviewName && (
