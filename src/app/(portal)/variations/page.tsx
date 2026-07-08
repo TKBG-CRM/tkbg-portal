@@ -396,7 +396,7 @@ export default function PortalVariationsPage() {
                   <Input
                     value={item}
                     onChange={(e) => setItem(e.target.value)}
-                    placeholder="e.g. Add a rear deck"
+                    placeholder="e.g. Increase internal door heights to 2340mm"
                     className="mt-1 bg-white"
                   />
                 </div>
