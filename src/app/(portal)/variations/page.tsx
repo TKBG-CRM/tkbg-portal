@@ -40,6 +40,26 @@ interface VItem {
   category: string;
   price: number | null;
   status: string;
+  submission_id: string | null;
+}
+
+interface VSubmission {
+  id: string;
+  submission_number: number;
+  title: string | null;
+  created_at: string;
+}
+
+const SUB_DATE_FMT = new Intl.DateTimeFormat("en-AU", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+function variationLabel(s: Pick<VSubmission, "submission_number" | "title">): string {
+  const base = `Variation ${s.submission_number}`;
+  const title = (s.title ?? "").trim();
+  return title ? `${base} — ${title}` : base;
 }
 
 export default function PortalVariationsPage() {
@@ -82,27 +102,54 @@ export default function PortalVariationsPage() {
     queryKey: ["portal-variations", projectId],
     enabled: !!projectId,
     queryFn: async () => {
-      const [{ data: rows }, locked, round] = await Promise.all([
+      const [{ data: rows }, { data: subs }, locked, round] = await Promise.all([
         supabase
           .from("project_variations")
-          .select("id, item_name, description, category, price, status")
+          .select("id, item_name, description, category, price, status, submission_id")
           .eq("project_id", projectId)
           .eq("portal_visible", true)
           .order("created_at", { ascending: true }),
+        supabase
+          .from("variation_submissions")
+          .select("id, submission_number, title, created_at")
+          .eq("project_id", projectId)
+          .order("submission_number", { ascending: true }),
         supabase.rpc("variation_register_locked", { p_project_id: projectId }),
         supabase.rpc("variation_current_round", { p_project_id: projectId }),
       ]);
       const canRequest = !locked.data && (round.data ?? 0) < 3;
-      return { items: (rows ?? []) as VItem[], canRequest };
+      return {
+        items: (rows ?? []) as VItem[],
+        submissions: (subs ?? []) as VSubmission[],
+        canRequest,
+      };
     },
   });
 
   const items = data?.items ?? [];
+  const submissions = data?.submissions ?? [];
   const canRequest = data?.canRequest ?? false;
   const quoted = items.filter((i) => i.status === "quoted");
   const approved = items.filter((i) => i.status === "confirmed");
   const declined = items.filter((i) => i.status === "rejected");
   const approvedTotal = approved.reduce((s, i) => s + (i.price ?? 0), 0);
+
+  // The approved record grouped into "Variation 1/2/3", oldest first, so the
+  // client sees a clean history of each round of changes. Items without a
+  // submission fall into a trailing "Other variations" group.
+  const submById = new Map(submissions.map((s) => [s.id, s]));
+  const approvedGroups = [
+    ...submissions.map((s) => ({
+      key: s.id,
+      submission: s as VSubmission | null,
+      items: approved.filter((i) => i.submission_id === s.id),
+    })),
+    {
+      key: "unassigned",
+      submission: null as VSubmission | null,
+      items: approved.filter((i) => !i.submission_id || !submById.has(i.submission_id)),
+    },
+  ].filter((g) => g.items.length > 0);
 
   const decideMutation = useMutation({
     mutationFn: async ({ id, decision }: { id: string; decision: "approve" | "decline" }) => {
@@ -239,7 +286,7 @@ export default function PortalVariationsPage() {
             )}
           </section>
 
-          {/* Approved */}
+          {/* Approved — grouped by variation (Variation 1/2/3) */}
           {approved.length > 0 && (
             <section>
               <div className="mb-3 flex items-center justify-between">
@@ -253,19 +300,47 @@ export default function PortalVariationsPage() {
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                {approved.map((i) => (
-                  <Card key={i.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <span className="flex items-center gap-2 font-medium text-black">
-                        <Check className="h-4 w-4 text-green-600" /> {i.item_name}
-                      </span>
-                      <span className="font-medium tabular-nums">
-                        {i.price != null ? AUD.format(i.price) : "—"}
-                      </span>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="space-y-5">
+                {approvedGroups.map((g) => {
+                  const heading = g.submission
+                    ? variationLabel(g.submission)
+                    : "Other variations";
+                  const dateLabel = g.submission
+                    ? SUB_DATE_FMT.format(new Date(g.submission.created_at))
+                    : null;
+                  const subtotal = g.items.reduce((s, i) => s + (i.price ?? 0), 0);
+                  return (
+                    <div key={g.key}>
+                      <div className="mb-2 flex items-baseline justify-between border-b border-brand-gold/30 pb-1">
+                        <span className="font-heading text-sm font-semibold text-black">
+                          {heading}
+                        </span>
+                        <span className="flex items-center gap-2 text-[11px] text-neutral-400">
+                          {dateLabel && <span>{dateLabel}</span>}
+                          {subtotal > 0 && (
+                            <span className="font-medium text-neutral-600">
+                              {AUD.format(subtotal)}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {g.items.map((i) => (
+                          <Card key={i.id}>
+                            <CardContent className="flex items-center justify-between p-4">
+                              <span className="flex items-center gap-2 font-medium text-black">
+                                <Check className="h-4 w-4 text-green-600" /> {i.item_name}
+                              </span>
+                              <span className="font-medium tabular-nums">
+                                {i.price != null ? AUD.format(i.price) : "—"}
+                              </span>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
