@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Mail, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,19 @@ export default function ReferralLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // Set when the partner arrived from a CRM "Set Up Your Portal Access" invite
+  // (…/referral/login?email=…), so we prefill their address and greet them.
+  const [invited, setInvited] = useState(false);
+
+  // Read the ?email= prefill from the invite link. Done in an effect (not
+  // useSearchParams) to avoid forcing a Suspense boundary on this route.
+  useEffect(() => {
+    const prefill = new URLSearchParams(window.location.search).get("email");
+    if (prefill) {
+      setEmail(prefill.trim());
+      setInvited(true);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,10 +96,12 @@ export default function ReferralLoginPage() {
               <div className="text-center mb-8">
                 <AuthPageLabel>Referral Partner Portal</AuthPageLabel>
                 <h1 className="text-xl font-semibold text-black font-heading">
-                  Track your referrals
+                  {invited ? "Welcome to the portal" : "Track your referrals"}
                 </h1>
                 <p className="text-sm text-neutral-500 mt-1 font-body">
-                  Sign in to see your referred leads and commissions
+                  {invited
+                    ? "You're all set — confirm your email and we'll send you a secure sign-in link."
+                    : "Sign in to see your referred leads and commissions"}
                 </p>
               </div>
 
