@@ -105,13 +105,34 @@ async function resolveSessionPartner(): Promise<{
   // the first portal-enabled match wins.
   const { data: partners } = await admin
     .from("referral_partners")
-    .select("id, name, contact_name, email")
+    .select("id, name, contact_name, email, portal_activated_at")
     .eq("portal_access", true)
     .ilike("email", user.email)
     .limit(1);
 
-  const partner = (partners?.[0] as ReferralPartner | undefined) ?? null;
-  if (!partner) return null;
+  const row = (partners?.[0] as
+    | (ReferralPartner & { portal_activated_at?: string | null })
+    | undefined) ?? null;
+  if (!row) return null;
+
+  // Stamp the first successful portal sign-in so staff can see the partner is an
+  // active user (CRM Partners → Portal). Only the first time; fire-and-forget so
+  // it never slows the dashboard load or fails it.
+  if (!row.portal_activated_at) {
+    void admin
+      .from("referral_partners")
+      .update({ portal_activated_at: new Date().toISOString() })
+      .eq("id", row.id)
+      .is("portal_activated_at", null)
+      .then(() => undefined);
+  }
+
+  const partner: ReferralPartner = {
+    id: row.id,
+    name: row.name,
+    contact_name: row.contact_name,
+    email: row.email,
+  };
   return { admin, partner };
 }
 
