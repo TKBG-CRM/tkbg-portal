@@ -3,6 +3,7 @@ import {
   referralMilestone,
   milestoneProgressPct,
   buildMilestoneTimeline,
+  TOTAL_STEPS,
 } from "../referral-status";
 
 describe("referralMilestone", () => {
@@ -19,10 +20,22 @@ describe("referralMilestone", () => {
     expect(m.tone).toBe("red");
   });
 
+  it("breaks out the early nurture journey", () => {
+    expect(referralMilestone("enquiry_made").key).toBe("new");
+    expect(referralMilestone("contact_attempted").key).toBe("contacted");
+    expect(referralMilestone("initial_contact_made").key).toBe("contacted");
+    expect(referralMilestone("working_enquiry").key).toBe("contacted");
+    expect(referralMilestone("discovery_meeting_booked").key).toBe("discovery_meeting");
+    expect(referralMilestone("discovery_meeting_completed").key).toBe("discovery_meeting");
+    expect(referralMilestone("research").key).toBe("options_presented");
+    expect(referralMilestone("presentation_completed").key).toBe("options_presented");
+    expect(referralMilestone("finalising_option").key).toBe("options_presented");
+  });
+
   it("maps a deposit-received (pre contract-signed) new_sale stage to Deposit Paid", () => {
     const m = referralMilestone("initial_deposit_received");
     expect(m.key).toBe("deposit_paid");
-    expect(m.step).toBe(2);
+    expect(m.step).toBe(5);
   });
 
   it("does not regress despite the order-11/12 collision", () => {
@@ -32,28 +45,32 @@ describe("referralMilestone", () => {
 
   it("maps contract_signed and later new_sale stages to Contract Signed", () => {
     expect(referralMilestone("contract_signed").key).toBe("contract_signed");
+    expect(referralMilestone("contract_signed").step).toBe(6);
     expect(referralMilestone("bod_received").key).toBe("contract_signed");
   });
 
   it("maps pre_site / construction / completed phases", () => {
     expect(referralMilestone("land_titled").key).toBe("pre_site");
+    expect(referralMilestone("land_titled").step).toBe(7);
     expect(referralMilestone("construction_base").key).toBe("construction");
+    expect(referralMilestone("construction_base").step).toBe(8);
     expect(referralMilestone("handover_completed").key).toBe("completed");
+    expect(referralMilestone("handover_completed").step).toBe(9);
   });
 });
 
 describe("milestoneProgressPct", () => {
-  it("is 0 for not-proceeding, scales 1..6", () => {
+  it("is 0 for not-proceeding, scales 1..9", () => {
+    expect(TOTAL_STEPS).toBe(9);
     expect(milestoneProgressPct(0)).toBe(0);
-    expect(milestoneProgressPct(3)).toBe(50);
-    expect(milestoneProgressPct(6)).toBe(100);
+    expect(milestoneProgressPct(9)).toBe(100);
   });
 });
 
 describe("buildMilestoneTimeline", () => {
   it("marks steps done / current / upcoming around the milestone", () => {
-    const t = buildMilestoneTimeline(referralMilestone("contract_signed")); // step 3
-    expect(t).toHaveLength(6);
+    const t = buildMilestoneTimeline(referralMilestone("discovery_meeting_booked")); // step 3
+    expect(t).toHaveLength(9);
     expect(t[0].state).toBe("done");
     expect(t[2].state).toBe("current");
     expect(t[3].state).toBe("upcoming");
