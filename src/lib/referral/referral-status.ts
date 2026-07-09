@@ -5,18 +5,22 @@ import { STAGE_CONFIG } from "@/lib/stages";
  * unit-tested and reused. The referral partner sees "where their referral is up
  * to", NOT the granular internal pipeline stage id or any internal note.
  *
- * Keyed off the stage's *phase* (not raw order) so it's immune to the
- * order-collisions in STAGE_CONFIG (e.g. initial_deposit_received order 11 vs
- * out_of_market / preliminary_works_agreement order 12).
+ * The early (pre-deposit) journey is broken out so partners can follow the
+ * nurture progress — Contacted, Discovery Meeting, Options Presented — instead
+ * of every lead reading "New Lead" until a deposit is paid. Thresholds are keyed
+ * off named stages' order in STAGE_CONFIG so they survive re-ordering.
  */
 export type ReferralMilestone = {
   key: string;
   label: string;
-  step: number; // 0 = not proceeding, 1..6 along the journey
+  step: number; // 0 = not proceeding, 1..9 along the journey
   tone: "neutral" | "gold" | "green" | "red";
 };
 
-export const TOTAL_STEPS = 6;
+export const TOTAL_STEPS = 9;
+
+// Named-stage order landmarks (fall back to the known values if absent).
+const ORDER = (id: string, fallback: number) => STAGE_CONFIG[id]?.order ?? fallback;
 
 export function referralMilestone(stageId: string | null): ReferralMilestone {
   if (!stageId) {
@@ -25,33 +29,42 @@ export function referralMilestone(stageId: string | null): ReferralMilestone {
   if (stageId === "out_of_market") {
     return { key: "not_proceeding", label: "Not Proceeding", step: 0, tone: "red" };
   }
-  // The Royston-only step between deposit and contract request. It's a real
-  // value in the shared DB but isn't in this app's STAGE_CONFIG copy, so map it
-  // explicitly rather than fall through to "New Lead".
+  // Royston-only step between deposit and contract request — not in this app's
+  // STAGE_CONFIG copy, so map it explicitly.
   if (stageId === "preliminary_works_agreement") {
-    return { key: "deposit_paid", label: "Deposit Paid", step: 2, tone: "gold" };
+    return { key: "deposit_paid", label: "Deposit Paid", step: 5, tone: "gold" };
   }
+
   const cfg = STAGE_CONFIG[stageId];
   const phase = cfg?.phase ?? "new_lead";
+  const order = cfg?.order ?? 0;
 
   if (phase === "completed") {
-    return { key: "completed", label: "Completed", step: 6, tone: "green" };
+    return { key: "completed", label: "Completed", step: 9, tone: "green" };
   }
   if (phase === "construction") {
-    return { key: "construction", label: "In Construction", step: 5, tone: "green" };
+    return { key: "construction", label: "In Construction", step: 8, tone: "green" };
   }
   if (phase === "pre_site") {
-    return { key: "pre_site", label: "Pre-Site", step: 4, tone: "gold" };
+    return { key: "pre_site", label: "Pre-Site", step: 7, tone: "gold" };
   }
   if (phase === "new_sale") {
-    const order = cfg?.order ?? 0;
-    const contractSignedOrder = STAGE_CONFIG["contract_signed"]?.order ?? 19;
-    if (order >= contractSignedOrder) {
-      return { key: "contract_signed", label: "Contract Signed", step: 3, tone: "green" };
+    if (order >= ORDER("contract_signed", 19)) {
+      return { key: "contract_signed", label: "Contract Signed", step: 6, tone: "green" };
     }
-    return { key: "deposit_paid", label: "Deposit Paid", step: 2, tone: "gold" };
+    return { key: "deposit_paid", label: "Deposit Paid", step: 5, tone: "gold" };
   }
-  // new_lead (and anything unmapped) → still an open lead.
+
+  // --- new_lead phase: the early nurture journey ---
+  if (order >= ORDER("research", 7)) {
+    return { key: "options_presented", label: "Options Presented", step: 4, tone: "gold" };
+  }
+  if (order >= ORDER("discovery_meeting_booked", 5)) {
+    return { key: "discovery_meeting", label: "Discovery Meeting", step: 3, tone: "gold" };
+  }
+  if (order >= ORDER("contact_attempted", 2)) {
+    return { key: "contacted", label: "Contacted", step: 2, tone: "gold" };
+  }
   return { key: "new", label: "New Lead", step: 1, tone: "neutral" };
 }
 
@@ -63,11 +76,14 @@ export function milestoneProgressPct(step: number): number {
 /** The ordered partner-facing journey, used to render the lead timeline. */
 export const MILESTONE_STEPS: { step: number; label: string }[] = [
   { step: 1, label: "New Lead" },
-  { step: 2, label: "Deposit Paid" },
-  { step: 3, label: "Contract Signed" },
-  { step: 4, label: "Pre-Site" },
-  { step: 5, label: "In Construction" },
-  { step: 6, label: "Completed" },
+  { step: 2, label: "Contacted" },
+  { step: 3, label: "Discovery Meeting" },
+  { step: 4, label: "Options Presented" },
+  { step: 5, label: "Deposit Paid" },
+  { step: 6, label: "Contract Signed" },
+  { step: 7, label: "Pre-Site" },
+  { step: 8, label: "In Construction" },
+  { step: 9, label: "Completed" },
 ];
 
 export type TimelineStep = {
@@ -77,9 +93,9 @@ export type TimelineStep = {
 };
 
 /**
- * Build the 6-step timeline for a lead, marking each step done / current /
- * upcoming relative to the milestone. A not-proceeding lead (step 0) has every
- * step "upcoming" — the detail page shows a distinct banner for that case.
+ * Build the timeline for a lead, marking each step done / current / upcoming
+ * relative to the milestone. A not-proceeding lead (step 0) has every step
+ * "upcoming" — the detail page shows a distinct banner for that case.
  */
 export function buildMilestoneTimeline(m: ReferralMilestone): TimelineStep[] {
   return MILESTONE_STEPS.map((s) => ({

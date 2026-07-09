@@ -177,6 +177,32 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
     hasNote: !!(p.referral_partner_note && String(p.referral_partner_note).trim()),
   }));
 
+  // ── Contact-only referred leads (no project yet) ─────────────────────────
+  // A referred lead that hasn't become a project still needs to show so the
+  // partner sees it landed. Skip contacts already represented as a project's
+  // client (avoids duplicates). These read as "New Lead" (no pipeline stage).
+  const projectClientIds = new Set(
+    projects.map((p: any) => p.client_id as string).filter(Boolean)
+  );
+  const { data: contactRows } = await admin
+    .from("contacts")
+    .select("id, first_name, last_name, created_at")
+    .eq("referral_partner_id", partner.id)
+    .order("created_at", { ascending: false });
+  for (const c of contactRows ?? []) {
+    if (projectClientIds.has(c.id as string)) continue;
+    const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
+    leads.push({
+      id: c.id as string,
+      projectName: null,
+      clientName: name || null,
+      referredOn: (c.created_at as string) || null,
+      milestone: referralMilestone(null),
+      hasNote: false,
+    });
+  }
+  leads.sort((a, b) => (b.referredOn || "").localeCompare(a.referredOn || ""));
+
   // ── Commissions ──────────────────────────────────────────────────────────
   const { data: commissionRows } = await admin
     .from("referral_partner_commissions")
@@ -190,7 +216,8 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
 
   const totals = {
     leadCount: leads.length,
-    convertedCount: leads.filter((l) => l.milestone.step >= 3).length,
+    // "Converted" = became a sale (contract signed onward, step 6+).
+    convertedCount: leads.filter((l) => l.milestone.step >= 6).length,
     pending: commissions
       .filter((c) => c.status === "pending" || c.status === "due")
       .reduce((s, c) => s + c.amount, 0),
@@ -223,7 +250,28 @@ export async function getReferralLeadDetail(
     .eq("referral_partner_id", partner.id) // ownership gate
     .maybeSingle();
 
-  if (!project) return null;
+  // Contact-only referred lead (no project yet) — resolve from contacts, still
+  // ownership-gated on referral_partner_id.
+  if (!project) {
+    const { data: contact } = await admin
+      .from("contacts")
+      .select("id, first_name, last_name, created_at")
+      .eq("id", leadId)
+      .eq("referral_partner_id", partner.id)
+      .maybeSingle();
+    if (!contact) return null;
+    const c = contact as any;
+    const lead: ReferredLead = {
+      id: c.id as string,
+      projectName: null,
+      clientName: [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || null,
+      referredOn: (c.created_at as string) || null,
+      milestone: referralMilestone(null),
+      hasNote: false,
+    };
+    return { partner, lead, note: null, commissions: [] };
+  }
+
   const p = project as any;
 
   let clientName: string | null = (p.client_full_name as string) || null;
