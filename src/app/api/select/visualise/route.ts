@@ -167,13 +167,14 @@ export async function POST(req: NextRequest) {
               ],
             },
           ],
+          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
         }),
       }
     );
     if (!res.ok) {
       const errBody = await res.text();
-      console.error("[visualise] Gemini error", res.status, errBody.slice(0, 300));
-      return fail("The visualiser could not process that image. Please try again.");
+      console.error("[visualise] Gemini error", res.status, errBody.slice(0, 500));
+      return fail(explainGeminiError(res.status, errBody));
     }
     const json = await res.json();
     const parts: Array<Record<string, any>> =
@@ -195,4 +196,32 @@ export async function POST(req: NextRequest) {
     console.error("[visualise] request failed", e);
     return fail("The visualiser is having trouble right now. Please try again.");
   }
+}
+
+/**
+ * Turns a Gemini API failure into a message specific enough to act on —
+ * during rollout the person reading it is TKBG staff testing the feature,
+ * and "could not process" hides everything that matters.
+ */
+function explainGeminiError(status: number, body: string): string {
+  let detail = "";
+  try {
+    const parsed = JSON.parse(body);
+    detail = String(parsed?.error?.message ?? "").slice(0, 160);
+  } catch {
+    detail = body.slice(0, 120);
+  }
+  if (status === 400 && /api key not valid/i.test(detail)) {
+    return "The visualiser API key is not valid. Check GEMINI_API_KEY in the portal's Vercel settings.";
+  }
+  if (status === 403) {
+    return `The visualiser API key is blocked or restricted (${detail || "permission denied"}).`;
+  }
+  if (status === 404) {
+    return "The image model is not available on this API key. Check the key was created in Google AI Studio.";
+  }
+  if (status === 429) {
+    return "The visualiser has hit its rate limit. Wait a minute and try again.";
+  }
+  return `The visualiser could not process that image (Gemini ${status}${detail ? `: ${detail}` : ""}).`;
 }
