@@ -10,6 +10,10 @@ import {
   SCHEME_PRESETS,
   VISUALISER_DISCLAIMER,
   MAX_VISUALISATIONS,
+  WATERMARK_BRAND,
+  WATERMARK_TITLE,
+  WATERMARK_NOTE,
+  watermarkLayout,
 } from "@/lib/visualiser";
 
 export interface GalleryOption {
@@ -127,13 +131,74 @@ export default function SelectionGallery({
     }
   }
 
+  // Compose the saved file with the branding IN the image: footer strip with
+  // the TURNKEY wordmark + the indicative only disclaimer, so anyone the
+  // client forwards it to (builder colour departments included) sees it is AI
+  // generated. Falls back to the raw image if canvas work fails.
+  async function watermarkedBlob(dataUrl: string): Promise<Blob> {
+    const raw = await (await fetch(dataUrl)).blob();
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = dataUrl;
+      });
+      const w = img.naturalWidth || 1024;
+      const h = img.naturalHeight || 768;
+      const { barHeight, padX, brandSize, titleSize, noteSize } = watermarkLayout(w);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h + barHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return raw;
+      ctx.drawImage(img, 0, 0);
+      // Footer strip
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, h, w, barHeight);
+      ctx.fillStyle = "#957B60";
+      ctx.fillRect(0, h, w, Math.max(2, Math.round(barHeight * 0.04)));
+      // Brand wordmark (letter spaced caps — text render keeps it crisp on
+      // every browser; SVG rasterisation is unreliable in some).
+      ctx.textBaseline = "middle";
+      const midY = h + barHeight / 2;
+      ctx.fillStyle = "#FFFFFF";
+      try {
+        (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${Math.round(brandSize * 0.45)}px`;
+      } catch {
+        // Older browsers: no letter spacing, still legible.
+      }
+      ctx.font = `600 ${brandSize}px Helvetica, Arial, sans-serif`;
+      ctx.textAlign = "left";
+      ctx.fillText(WATERMARK_BRAND, padX, midY);
+      // Disclaimer, right aligned, two lines
+      try {
+        (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "1px";
+      } catch {
+        // Ignore.
+      }
+      ctx.textAlign = "right";
+      ctx.font = `600 ${titleSize}px Helvetica, Arial, sans-serif`;
+      ctx.fillText(WATERMARK_TITLE, w - padX, midY - titleSize * 0.65);
+      ctx.fillStyle = "#C9BBAE";
+      ctx.font = `400 ${noteSize}px Helvetica, Arial, sans-serif`;
+      ctx.fillText(WATERMARK_NOTE, w - padX, midY + noteSize * 1.1);
+      const out = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.92)
+      );
+      return out ?? raw;
+    } catch {
+      return raw;
+    }
+  }
+
   // Save the visualisation to the device: native share sheet where available
   // (saves to Photos on iOS), plain download otherwise.
   async function saveVisualisation() {
     if (!vizImage || !vizFacade) return;
     setVizSaving(true);
     try {
-      const blob = await (await fetch(vizImage)).blob();
+      const blob = await watermarkedBlob(vizImage);
       const ext = blob.type.includes("png") ? "png" : "jpg";
       const filename = `${vizFacade.name.replace(/[^\w ]+/g, "").trim().replace(/\s+/g, "-")}-ai-visualisation.${ext}`;
       const file = new File([blob], filename, { type: blob.type });

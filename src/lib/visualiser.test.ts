@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   buildRefinementPrompt,
+  watermarkLayout,
+  WATERMARK_TITLE,
+  WATERMARK_NOTE,
   refinementInstruction,
   MAX_VISUALISATIONS,
   visualisationsRemaining,
@@ -101,6 +104,23 @@ describe("customSchemeDescription", () => {
     expect(customSchemeDescription("sage green with off white trims")).toContain(
       "sage green with off white trims"
     );
+  });
+});
+
+describe("watermark", () => {
+  it("layout scales with width and respects minimums", () => {
+    const small = watermarkLayout(320);
+    const large = watermarkLayout(1600);
+    expect(small.barHeight).toBeGreaterThanOrEqual(56);
+    expect(large.barHeight).toBeGreaterThan(small.barHeight);
+    expect(large.brandSize).toBeGreaterThan(small.brandSize);
+    expect(small.noteSize).toBeGreaterThanOrEqual(9);
+  });
+  it("wording names AI and variance for whoever receives the file", () => {
+    expect(WATERMARK_TITLE).toContain("AI VISUALISATION");
+    expect(WATERMARK_TITLE).toContain("INDICATIVE ONLY");
+    expect(WATERMARK_NOTE.toLowerCase()).toContain("vary");
+    expect(WATERMARK_NOTE.toLowerCase()).toContain("price");
   });
 });
 
