@@ -149,6 +149,7 @@ export default async function SelectPage({
       facades={req.include_facades ? facadeCards : []}
       externalColours={req.include_external_colours ? externalCards : []}
       internalColours={req.include_internal_colours ? internalCards : []}
+      visualiserEnabled={!!process.env.GEMINI_API_KEY}
     />
   );
 }
