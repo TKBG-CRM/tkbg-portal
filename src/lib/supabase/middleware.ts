@@ -64,6 +64,14 @@ export async function updateSession(request: NextRequest) {
   const isReferralRoute =
     request.nextUrl.pathname === "/referral" ||
     request.nextUrl.pathname.startsWith("/referral/");
+  // Facade & colour selection pages are tokenised and public by design — the
+  // client arrives from an email link with no portal session. The page and its
+  // confirm API validate the one time selection token themselves with the
+  // service role (same pattern as /register). Without this bypass the POST
+  // confirm 307 redirects to /login → 405.
+  const isSelect =
+    request.nextUrl.pathname.startsWith("/select/") ||
+    request.nextUrl.pathname.startsWith("/api/select/");
 
   if (
     !user &&
@@ -74,7 +82,8 @@ export async function updateSession(request: NextRequest) {
     !isRegister &&
     !isRegisterApi &&
     !isAuthApi &&
-    !isReferralPublic
+    !isReferralPublic &&
+    !isSelect
   ) {
     const url = request.nextUrl.clone();
     url.pathname = isReferralRoute ? "/referral/login" : "/login";
