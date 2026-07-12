@@ -46,8 +46,29 @@ describe("buildVisualiserPrompt", () => {
   it("locks the structure and only recolours", () => {
     const prompt = buildVisualiserPrompt(SCHEME_PRESETS[0].description);
     expect(prompt).toContain("Keep the exact same house");
-    expect(prompt).toContain("Only change the colours");
+    expect(prompt).toContain("Only change the COLOURS");
     expect(prompt).toContain("light coastal palette");
+  });
+  it("hard forbids adding architectural details", () => {
+    const prompt = buildVisualiserPrompt("anything");
+    expect(prompt).toContain("Do NOT add");
+    expect(prompt).toContain("battens");
+    expect(prompt).toContain("ignore that part");
+  });
+});
+
+describe("preset descriptions never add elements", () => {
+  it("only recolours existing surfaces (additions phrased as 'existing')", () => {
+    for (const p of SCHEME_PRESETS) {
+      // Any timber/cladding/panel mention must be qualified as existing —
+      // the visualiser is purely colour, never new details.
+      for (const risky of ["timber", "cladding", "panel", "batten", "slat", "accent"]) {
+        const idx = p.description.toLowerCase().indexOf(risky);
+        if (idx === -1) continue;
+        const before = p.description.toLowerCase().slice(Math.max(0, idx - 45), idx);
+        expect(before, `preset ${p.id} mentions "${risky}" without qualifying it as existing`).toContain("existing");
+      }
+    }
   });
 });
 
