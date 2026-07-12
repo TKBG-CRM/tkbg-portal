@@ -10,6 +10,7 @@ import {
   optionImageUrl,
   type SelectionRequestRow,
 } from "@/lib/selections";
+import { visualiserAllowedForRequest } from "@/lib/visualiser";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function SelectPage({
 
   const { data: project } = await admin
     .from("projects")
-    .select("id, name, client_full_name, land_address, land_suburb, sales_rep_id")
+    .select("id, name, client_full_name, land_address, land_suburb, sales_rep_id, builder_id")
     .eq("id", req.project_id)
     .maybeSingle();
 
@@ -149,9 +150,28 @@ export default async function SelectPage({
       facades={req.include_facades ? facadeCards : []}
       externalColours={req.include_external_colours ? externalCards : []}
       internalColours={req.include_internal_colours ? internalCards : []}
-      visualiserEnabled={!!process.env.GEMINI_API_KEY}
+      visualiserEnabled={
+        !!process.env.GEMINI_API_KEY &&
+        visualiserAllowedForRequest(req) &&
+        (await builderAllowsVisualiser(admin, project?.builder_id ?? null))
+      }
     />
   );
+}
+
+// Per builder visualiser flag; fails closed when the column or builder is
+// missing so the feature can never appear for a builder that has not opted in.
+async function builderAllowsVisualiser(
+  admin: SupabaseClient,
+  builderId: string | null
+): Promise<boolean> {
+  if (!builderId) return false;
+  const { data } = await admin
+    .from("contacts")
+    .select("visualiser_enabled")
+    .eq("id", builderId)
+    .maybeSingle();
+  return (data as { visualiser_enabled?: boolean } | null)?.visualiser_enabled === true;
 }
 
 async function resolveChosenNames(

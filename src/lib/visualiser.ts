@@ -13,6 +13,19 @@ export function visualisationsRemaining(count: number): number {
   return Math.max(0, MAX_VISUALISATIONS - Math.max(0, count));
 }
 
+/**
+ * The visualiser only appears on selections with NO colour scheme sections:
+ * when a builder's colours come from preset boards, AI colour ways would show
+ * clients combinations they cannot actually pick. (The per builder
+ * visualiser_enabled flag is checked separately, server side.)
+ */
+export function visualiserAllowedForRequest(r: {
+  include_external_colours: boolean;
+  include_internal_colours: boolean;
+}): boolean {
+  return !r.include_external_colours && !r.include_internal_colours;
+}
+
 export const VISUALISER_DISCLAIMER =
   "These images are AI generated to help you visualise different colour ways only. " +
   "Actual colours, materials and product availability will vary, and colour selections " +

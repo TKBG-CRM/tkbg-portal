@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   MAX_VISUALISATIONS,
   visualisationsRemaining,
+  visualiserAllowedForRequest,
   SCHEME_PRESETS,
   presetById,
   buildVisualiserPrompt,
@@ -16,6 +17,20 @@ describe("visualisationsRemaining", () => {
     expect(visualisationsRemaining(MAX_VISUALISATIONS)).toBe(0);
     expect(visualisationsRemaining(999)).toBe(0);
     expect(visualisationsRemaining(-5)).toBe(MAX_VISUALISATIONS);
+  });
+});
+
+describe("visualiserAllowedForRequest", () => {
+  it("only allows selections with no colour scheme sections", () => {
+    expect(
+      visualiserAllowedForRequest({ include_external_colours: false, include_internal_colours: false })
+    ).toBe(true);
+    expect(
+      visualiserAllowedForRequest({ include_external_colours: true, include_internal_colours: false })
+    ).toBe(false);
+    expect(
+      visualiserAllowedForRequest({ include_external_colours: false, include_internal_colours: true })
+    ).toBe(false);
   });
 });
 
