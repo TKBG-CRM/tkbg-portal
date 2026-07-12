@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  SCHEME_PRESETS,
+  VISUALISER_DISCLAIMER,
+  MAX_VISUALISATIONS,
+} from "@/lib/visualiser";
 
 export interface GalleryOption {
   id: string;
@@ -34,6 +40,7 @@ export default function SelectionGallery({
   facades,
   externalColours,
   internalColours,
+  visualiserEnabled = false,
 }: {
   token: string;
   firstName: string;
@@ -43,11 +50,23 @@ export default function SelectionGallery({
   facades: GalleryOption[];
   externalColours: GalleryOption[];
   internalColours: GalleryOption[];
+  /** GEMINI_API_KEY configured server side — hides the AI visualiser otherwise. */
+  visualiserEnabled?: boolean;
 }) {
   const [facadeId, setFacadeId] = useState<string | null>(null);
   const [externalId, setExternalId] = useState<string | null>(null);
   const [internalId, setInternalId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<GalleryOption | null>(null);
+  // AI colour visualiser: a facade re rendered in a chosen colour scheme,
+  // gated behind an explicit disclaimer acknowledgement.
+  const [vizFacade, setVizFacade] = useState<GalleryOption | null>(null);
+  const [vizAcknowledged, setVizAcknowledged] = useState(false);
+  const [vizScheme, setVizScheme] = useState<string | null>(null);
+  const [vizCustom, setVizCustom] = useState("");
+  const [vizBusy, setVizBusy] = useState(false);
+  const [vizImage, setVizImage] = useState<string | null>(null);
+  const [vizRemaining, setVizRemaining] = useState<number | null>(null);
+  const [vizError, setVizError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -66,6 +85,40 @@ export default function SelectionGallery({
     externalId ? externalColours.find((c) => c.id === externalId)?.name : null,
     internalId ? internalColours.find((c) => c.id === internalId)?.name : null,
   ].filter(Boolean) as string[];
+
+  function openVisualiser(facade: GalleryOption) {
+    setVizFacade(facade);
+    setVizScheme(null);
+    setVizCustom("");
+    setVizImage(null);
+    setVizError(null);
+  }
+
+  async function generateVisualisation() {
+    if (!vizFacade) return;
+    setVizBusy(true);
+    setVizError(null);
+    try {
+      const res = await fetch("/api/select/visualise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          facade_id: vizFacade.id,
+          scheme_id: vizScheme,
+          custom: vizScheme ? undefined : vizCustom,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Could not create the visualisation");
+      setVizImage(json.image);
+      if (typeof json.remaining === "number") setVizRemaining(json.remaining);
+    } catch (e: any) {
+      setVizError(e?.message || "Could not create the visualisation. Please try again.");
+    } finally {
+      setVizBusy(false);
+    }
+  }
 
   async function confirm() {
     setSubmitting(true);
@@ -137,6 +190,7 @@ export default function SelectionGallery({
             selectedId={facadeId}
             onSelect={setFacadeId}
             onZoom={setLightbox}
+            onVisualise={visualiserEnabled ? openVisualiser : undefined}
           />
         )}
         {needExternal && (
@@ -180,6 +234,111 @@ export default function SelectionGallery({
           </Button>
         </div>
       </div>
+
+      {/* AI colour visualiser */}
+      <Dialog open={!!vizFacade} onOpenChange={(o) => !o && setVizFacade(null)}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogTitle className="flex items-center gap-2 pr-6 font-heading text-lg text-black">
+            <Sparkles className="size-5 text-brand-gold" />
+            Visualise colour ways{vizFacade ? ` — ${vizFacade.name}` : ""}
+          </DialogTitle>
+
+          {!vizAcknowledged ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-brand-gold/30 bg-brand-gold-light p-4 text-sm leading-relaxed text-neutral-800">
+                {VISUALISER_DISCLAIMER}
+              </div>
+              <Button
+                onClick={() => setVizAcknowledged(true)}
+                className="w-full bg-brand-gold text-white hover:bg-brand-gold-dark"
+              >
+                I understand, show me colour ways
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {vizImage ? (
+                <div>
+                  <div className="relative overflow-hidden rounded-lg">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={vizImage} alt="AI colour visualisation" className="w-full" />
+                    <span className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-white">
+                      AI visualisation — indicative only
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                    {VISUALISER_DISCLAIMER}
+                  </p>
+                </div>
+              ) : (
+                vizFacade?.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={vizFacade.image_url}
+                    alt={vizFacade.name}
+                    className="w-full rounded-lg"
+                  />
+                )
+              )}
+
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-brand-gold">
+                  Choose a colour scheme
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {SCHEME_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setVizScheme(p.id);
+                        setVizCustom("");
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm",
+                        vizScheme === p.id
+                          ? "border-brand-gold bg-brand-gold text-white"
+                          : "border-neutral-200 bg-white text-neutral-700"
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    value={vizCustom}
+                    onChange={(e) => {
+                      setVizCustom(e.target.value);
+                      if (e.target.value) setVizScheme(null);
+                    }}
+                    placeholder="Or describe your own, e.g. sage green with white trims"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {vizError && <p className="text-sm text-red-600">{vizError}</p>}
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-neutral-400">
+                  {vizRemaining != null
+                    ? `${vizRemaining} of ${MAX_VISUALISATIONS} visualisations left`
+                    : `Up to ${MAX_VISUALISATIONS} visualisations`}
+                </span>
+                <Button
+                  onClick={generateVisualisation}
+                  disabled={vizBusy || (!vizScheme && vizCustom.trim().length < 4) || vizRemaining === 0}
+                  className="bg-brand-gold text-white hover:bg-brand-gold-dark"
+                >
+                  {vizBusy ? <Loader2 className="mr-1 size-4 animate-spin" /> : <Sparkles className="mr-1 size-4" />}
+                  {vizImage ? "Try another scheme" : "Visualise"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Lightbox */}
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
@@ -226,12 +385,15 @@ function Section({
   selectedId,
   onSelect,
   onZoom,
+  onVisualise,
 }: {
   label: string;
   options: GalleryOption[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onZoom: (o: GalleryOption) => void;
+  /** Present on the facade section when the AI colour visualiser is enabled. */
+  onVisualise?: (o: GalleryOption) => void;
 }) {
   return (
     <section className="mt-8">
@@ -299,6 +461,15 @@ function Section({
                   {on && <Check className="size-4" />}
                 </span>
               </button>
+              {onVisualise && o.image_url && (
+                <button
+                  type="button"
+                  onClick={() => onVisualise(o)}
+                  className="flex w-full items-center gap-1.5 border-t border-neutral-100 px-3 py-2 text-left text-xs font-medium text-brand-gold"
+                >
+                  <Sparkles className="size-3.5" /> Visualise colour ways (AI)
+                </button>
+              )}
             </div>
           );
         })}
