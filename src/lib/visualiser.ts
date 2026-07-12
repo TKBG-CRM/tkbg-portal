@@ -37,23 +37,26 @@ export const SCHEME_PRESETS: ColourSchemePreset[] = [
     description:
       "a bold monochrome palette: charcoal or dark grey render, black roof, dark grey brick, matte black garage door, window frames and gutters",
   },
+  // Preset wording is deliberately specific: named Colorbond/Dulux tones and
+  // exact placements keep the model on proven, on trend combinations — vague
+  // colour words ("beige", "high contrast") let it invent ugly ones.
   {
     id: "warm_neutrals",
     label: "Warm Neutrals",
     description:
-      "a warm neutral palette: beige and greige render, brown roof tiles, classic cream brick, earthy tan garage door and warm white trims",
+      "a warm neutral palette styled by a colour consultant: soft greige render in a Colorbond Dune tone across the main walls, warm off white Surfmist tone trims, fascia and garage door, a soft mid grey Shale Grey roof, light oak timber look accents around the entry, and a matte charcoal front door — sun kissed, muted and cohesive, with no yellow, orange or brown tones",
   },
   {
     id: "classic_red_brick",
     label: "Classic Brick",
     description:
-      "a classic Australian palette: traditional red brown face brick, terracotta roof tiles, cream render accents and a neutral garage door",
+      "an elevated classic brick palette: warm russet brown blend face brick with subtle tonal variation, a deep charcoal Colorbond Monument roof and gutters, crisp warm white render accents, white window frames and trims, and a black front door — timeless heritage styling done tastefully, with no orange brick and no terracotta roof",
   },
   {
     id: "modern_contrast",
     label: "Modern Contrast",
     description:
-      "a modern high contrast palette: crisp white render with charcoal feature cladding, black window frames, grey roof and a timber look front door",
+      "a refined modern contrast palette: warm white render in a Dulux Natural White tone across most of the facade, a deep matte charcoal Colorbond Monument roof, gutters and window frames, one charcoal feature panel, and warm oak timber battens at the entry — sharp but restrained designer contrast that highlights the home's form, no pure black walls",
   },
 ];
 
@@ -71,8 +74,10 @@ export function buildVisualiserPrompt(schemeDescription: string): string {
     schemeDescription.trim() +
     ". Keep the exact same house, structure, camera angle, landscaping, lighting and sky. " +
     "Only change the colours and materials of the external surfaces (render, brick, roof, " +
-    "garage door, front door, window frames, gutters and trims). Photorealistic result, " +
-    "no text or watermarks."
+    "garage door, front door, window frames, gutters and trims). The palette must look " +
+    "professionally styled and cohesive — muted, sophisticated, contemporary Australian " +
+    "new build tones, like a display home photographed for a builder's brochure. Avoid " +
+    "garish, oversaturated or clashing colours. Photorealistic result, no text or watermarks."
   );
 }
 
