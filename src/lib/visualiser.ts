@@ -42,7 +42,7 @@ export const SCHEME_PRESETS: ColourSchemePreset[] = [
     id: "coastal_light",
     label: "Light & Coastal",
     description:
-      "a light coastal palette: white or pale render, light grey roof tiles, whitewashed or blonde brick, light timber look garage door and accents",
+      "a light coastal palette: white or pale render, light grey roof tiles, whitewashed or blonde brick, the existing garage door in a light timber look finish, and any existing timber elements in light oak",
   },
   {
     id: "monochrome_dark",
@@ -57,19 +57,19 @@ export const SCHEME_PRESETS: ColourSchemePreset[] = [
     id: "warm_neutrals",
     label: "Warm Neutrals",
     description:
-      "a warm neutral palette styled by a colour consultant: soft greige render in a Colorbond Dune tone across the main walls, warm off white Surfmist tone trims, fascia and garage door, a soft mid grey Shale Grey roof, light oak timber look accents around the entry, and a matte charcoal front door — sun kissed, muted and cohesive, with no yellow, orange or brown tones",
+      "a warm neutral palette styled by a colour consultant: soft greige render in a Colorbond Dune tone across the main walls, warm off white Surfmist tone trims, fascia and garage door, a soft mid grey Shale Grey roof, and a matte charcoal front door — sun kissed, muted and cohesive, with no yellow, orange or brown tones",
   },
   {
     id: "classic_red_brick",
     label: "Classic Brick",
     description:
-      "an elevated classic brick palette: warm russet brown blend face brick with subtle tonal variation, a deep charcoal Colorbond Monument roof and gutters, crisp warm white render accents, white window frames and trims, and a black front door — timeless heritage styling done tastefully, with no orange brick and no terracotta roof",
+      "an elevated classic brick palette: warm russet brown blend face brick with subtle tonal variation, a deep charcoal Colorbond Monument roof and gutters, any existing render sections in crisp warm white, white window frames and trims, and a black front door — timeless heritage styling done tastefully, with no orange brick and no terracotta roof",
   },
   {
     id: "modern_contrast",
     label: "Modern Contrast",
     description:
-      "a refined modern contrast palette: warm white render in a Dulux Natural White tone across most of the facade, a deep matte charcoal Colorbond Monument roof, gutters and window frames, one charcoal feature panel, and warm oak timber battens at the entry — sharp but restrained designer contrast that highlights the home's form, no pure black walls",
+      "a refined modern contrast palette: warm white render in a Dulux Natural White tone across most of the facade, a deep matte charcoal Colorbond Monument roof, gutters and window frames, any existing feature cladding or garage door in deep charcoal, and any existing timber elements in warm oak — sharp but restrained designer contrast that highlights the home's form, no pure black walls",
   },
 ];
 
@@ -86,8 +86,12 @@ export function buildVisualiserPrompt(schemeDescription: string): string {
     "Recolour this house facade photo to show " +
     schemeDescription.trim() +
     ". Keep the exact same house, structure, camera angle, landscaping, lighting and sky. " +
-    "Only change the colours and materials of the external surfaces (render, brick, roof, " +
-    "garage door, front door, window frames, gutters and trims). The palette must look " +
+    "Only change the COLOURS and surface finishes of the existing external surfaces (render, " +
+    "brick, roof, garage door, front door, window frames, gutters and trims). Do NOT add, " +
+    "remove or reshape any architectural element or detail — no new cladding, battens, " +
+    "slats, panels, mouldings, stonework, lights, plants or props; every element keeps its " +
+    "exact shape, position and texture layout, only its colour changes. If the scheme " +
+    "mentions an element this home does not have, simply ignore that part. The palette must look " +
     "professionally styled and cohesive — muted, sophisticated, contemporary Australian " +
     "new build tones, like a display home photographed for a builder's brochure. Avoid " +
     "garish, oversaturated or clashing colours. Photorealistic result, no text or watermarks."
