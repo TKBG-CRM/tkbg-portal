@@ -5,6 +5,7 @@ import { ChevronLeft, DollarSign, StickyNote, Check } from "lucide-react";
 import { getReferralLeadDetail } from "@/lib/referral/get-referral-bundle";
 import {
   buildMilestoneTimeline,
+  PAYMENT_TERMS_NOTE,
   type ReferralMilestone,
 } from "@/lib/referral/referral-status";
 
@@ -110,37 +111,54 @@ export default async function ReferralLeadDetailPage({
               This referral is not proceeding.
             </div>
           ) : (
-            <ol className="space-y-3">
-              {timeline.map((s) => (
-                <li key={s.step} className="flex items-center gap-3">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                      s.state === "done"
-                        ? "bg-green-500 text-white"
-                        : s.state === "current"
-                        ? "bg-brand-gold text-white"
-                        : "bg-neutral-100 text-neutral-400"
-                    }`}
-                  >
-                    {s.state === "done" ? <Check className="h-3.5 w-3.5" /> : s.step}
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      s.state === "upcoming"
-                        ? "text-neutral-400"
-                        : "text-black font-medium"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                  {s.state === "current" && (
-                    <span className="text-[10px] uppercase tracking-wider text-brand-gold">
-                      Current
+            <>
+              <ol className="space-y-3">
+                {timeline.map((s) => (
+                  <li key={s.step} className="flex items-start gap-3">
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                        s.state === "done"
+                          ? "bg-green-500 text-white"
+                          : s.state === "current"
+                          ? "bg-brand-gold text-white"
+                          : "bg-neutral-100 text-neutral-400"
+                      }`}
+                    >
+                      {s.state === "done" ? <Check className="h-3.5 w-3.5" /> : s.step}
                     </span>
-                  )}
-                </li>
-              ))}
-            </ol>
+                    <div className="min-w-0">
+                      <span
+                        className={`text-sm ${
+                          s.state === "upcoming"
+                            ? "text-neutral-400"
+                            : "text-black font-medium"
+                        }`}
+                      >
+                        {s.label}
+                        {s.state === "current" && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-brand-gold">
+                            Current
+                          </span>
+                        )}
+                      </span>
+                      {s.payment && (
+                        <span
+                          className={`mt-1 flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                            s.state === "done"
+                              ? "border-green-200 bg-green-50 text-green-700"
+                              : "border-brand-gold/25 bg-brand-gold/10 text-brand-gold"
+                          }`}
+                        >
+                          <DollarSign className="h-3 w-3 shrink-0" />
+                          {s.payment}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-xs text-neutral-400 mt-4">{PAYMENT_TERMS_NOTE}</p>
+            </>
           )}
         </section>
 
