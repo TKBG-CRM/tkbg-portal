@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildRefinementPrompt,
+  refinementInstruction,
   MAX_VISUALISATIONS,
   visualisationsRemaining,
   visualiserAllowedForRequest,
@@ -69,6 +71,21 @@ describe("preset descriptions never add elements", () => {
         expect(before, `preset ${p.id} mentions "${risky}" without qualifying it as existing`).toContain("existing");
       }
     }
+  });
+});
+
+describe("refinement", () => {
+  it("sanitises the instruction like custom descriptions", () => {
+    expect(refinementInstruction("  ")).toBeNull();
+    expect(refinementInstruction("ok")).toBeNull();
+    expect(refinementInstruction("matte black garage  door ")).toBe("matte black garage door");
+    expect((refinementInstruction("x".repeat(500)) as string).length).toBe(300);
+  });
+  it("prompt applies one colour change and forbids additions", () => {
+    const prompt = buildRefinementPrompt("matte black garage door");
+    expect(prompt).toContain("ONLY this colour change: matte black garage door");
+    expect(prompt).toContain("Keep absolutely everything else identical");
+    expect(prompt).toContain("Do NOT add");
   });
 });
 
