@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Sparkles, X } from "lucide-react";
+import { Check, Download, Loader2, Sparkles, Wand2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,8 @@ export default function SelectionGallery({
   const [vizCustom, setVizCustom] = useState("");
   const [vizBusy, setVizBusy] = useState(false);
   const [vizImage, setVizImage] = useState<string | null>(null);
+  const [vizRefine, setVizRefine] = useState("");
+  const [vizSaving, setVizSaving] = useState(false);
   const [vizRemaining, setVizRemaining] = useState<number | null>(null);
   const [vizError, setVizError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -94,7 +96,7 @@ export default function SelectionGallery({
     setVizError(null);
   }
 
-  async function generateVisualisation() {
+  async function generateVisualisation(refine?: string) {
     if (!vizFacade) return;
     setVizBusy(true);
     setVizError(null);
@@ -102,21 +104,54 @@ export default function SelectionGallery({
       const res = await fetch("/api/select/visualise", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          facade_id: vizFacade.id,
-          scheme_id: vizScheme,
-          custom: vizScheme ? undefined : vizCustom,
-        }),
+        body: JSON.stringify(
+          refine && vizImage
+            ? { token, facade_id: vizFacade.id, refine, base_image: vizImage }
+            : {
+                token,
+                facade_id: vizFacade.id,
+                scheme_id: vizScheme,
+                custom: vizScheme ? undefined : vizCustom,
+              }
+        ),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Could not create the visualisation");
       setVizImage(json.image);
+      setVizRefine("");
       if (typeof json.remaining === "number") setVizRemaining(json.remaining);
     } catch (e: any) {
       setVizError(e?.message || "Could not create the visualisation. Please try again.");
     } finally {
       setVizBusy(false);
+    }
+  }
+
+  // Save the visualisation to the device: native share sheet where available
+  // (saves to Photos on iOS), plain download otherwise.
+  async function saveVisualisation() {
+    if (!vizImage || !vizFacade) return;
+    setVizSaving(true);
+    try {
+      const blob = await (await fetch(vizImage)).blob();
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      const filename = `${vizFacade.name.replace(/[^\w ]+/g, "").trim().replace(/\s+/g, "-")}-ai-visualisation.${ext}`;
+      const file = new File([blob], filename, { type: blob.type });
+      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "AI facade visualisation" });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+      }
+    } catch {
+      // Share sheet dismissed or unsupported — nothing to surface.
+    } finally {
+      setVizSaving(false);
     }
   }
 
@@ -237,7 +272,7 @@ export default function SelectionGallery({
 
       {/* AI colour visualiser */}
       <Dialog open={!!vizFacade} onOpenChange={(o) => !o && setVizFacade(null)}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none border-0 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-lg sm:rounded-lg sm:border">
           <DialogTitle className="flex items-center gap-2 pr-6 font-heading text-lg text-black">
             <Sparkles className="size-5 text-brand-gold" />
             Visualise colour ways{vizFacade ? ` — ${vizFacade.name}` : ""}
@@ -265,7 +300,43 @@ export default function SelectionGallery({
                     <span className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-white">
                       AI visualisation — indicative only
                     </span>
+                    <button
+                      type="button"
+                      onClick={saveVisualisation}
+                      disabled={vizSaving}
+                      className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2.5 py-1.5 text-xs font-medium text-white"
+                    >
+                      {vizSaving ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Download className="size-3.5" />
+                      )}
+                      Save
+                    </button>
                   </div>
+
+                  {/* Targeted tweak on the current result */}
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      value={vizRefine}
+                      onChange={(e) => setVizRefine(e.target.value)}
+                      placeholder="Make a change, e.g. matte black garage door"
+                      className="h-11 text-base"
+                      disabled={vizBusy}
+                    />
+                    <Button
+                      onClick={() => generateVisualisation(vizRefine)}
+                      disabled={vizBusy || vizRefine.trim().length < 4 || vizRemaining === 0}
+                      className="h-11 shrink-0 bg-black text-white hover:bg-neutral-800"
+                    >
+                      {vizBusy ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+
                   <p className="mt-2 text-xs leading-relaxed text-neutral-500">
                     {VISUALISER_DISCLAIMER}
                   </p>
@@ -313,7 +384,7 @@ export default function SelectionGallery({
                       if (e.target.value) setVizScheme(null);
                     }}
                     placeholder="Or describe your own, e.g. Hampton facade with dark window frames"
-                    className="text-sm"
+                    className="h-11 text-base"
                   />
                 </div>
               </div>
@@ -327,7 +398,7 @@ export default function SelectionGallery({
                     : `Up to ${MAX_VISUALISATIONS} visualisations`}
                 </span>
                 <Button
-                  onClick={generateVisualisation}
+                  onClick={() => generateVisualisation()}
                   disabled={vizBusy || (!vizScheme && vizCustom.trim().length < 4) || vizRemaining === 0}
                   className="bg-brand-gold text-white hover:bg-brand-gold-dark"
                 >

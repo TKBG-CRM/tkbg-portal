@@ -104,3 +104,28 @@ export function customSchemeDescription(input: string): string | null {
   if (cleaned.length < 4) return null;
   return `a colour palette described by the client as: ${cleaned.slice(0, 300)}`;
 }
+
+/** Sanitised targeted change ("make the garage door matte black"), or null. */
+export function refinementInstruction(input: string): string | null {
+  const cleaned = input.replace(/\s+/g, " ").trim();
+  if (cleaned.length < 4) return null;
+  return cleaned.slice(0, 300);
+}
+
+/**
+ * A follow up edit on an already generated visualisation: apply ONE requested
+ * colour change and keep everything else pixel faithful. Same hard no
+ * additions constraint as the main prompt.
+ */
+export function buildRefinementPrompt(instruction: string): string {
+  return (
+    "Modify this house facade image by applying ONLY this colour change: " +
+    instruction.trim() +
+    ". Keep absolutely everything else identical — the house, structure, camera angle, " +
+    "landscaping, lighting, sky and every other surface's colour stay exactly as they are. " +
+    "Do NOT add, remove or reshape any architectural element or detail — no new cladding, " +
+    "battens, slats, panels, mouldings, stonework, lights, plants or props. If the request " +
+    "asks for anything other than a colour or surface finish change, ignore that part. " +
+    "Photorealistic result, no text or watermarks."
+  );
+}

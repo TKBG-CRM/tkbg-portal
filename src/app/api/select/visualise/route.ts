@@ -3,8 +3,11 @@
  * selection page. Public by design (allowlisted with /api/select/*): the one
  * time selection token is the credential.
  *
- * Body: { token, facade_id, scheme_id? , custom? }  (scheme_id from
- * SCHEME_PRESETS, or a custom colour description — one of the two.)
+ * Body: { token, facade_id, scheme_id?, custom? }  — a fresh visualisation
+ * from a preset or custom colour description; OR
+ *       { token, facade_id, refine, base_image } — a targeted follow up edit
+ * ("make the garage door matte black") applied to the PREVIOUS result, which
+ * the client sends back as a data URL. Both count against the same cap.
  *
  * Guard rails, in order:
  *   - token must belong to an OPEN request, and facade_id must be one of the
@@ -28,6 +31,8 @@ import {
   presetById,
   buildVisualiserPrompt,
   customSchemeDescription,
+  refinementInstruction,
+  buildRefinementPrompt,
 } from "@/lib/visualiser";
 
 export const runtime = "nodejs";
@@ -58,19 +63,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  // Resolve the scheme: preset id or custom description.
+  // Two modes: a fresh scheme (preset/custom), or a targeted refinement of a
+  // previous result the client sends back as a data URL.
+  const refine =
+    body && typeof body.refine === "string" ? refinementInstruction(body.refine) : null;
+  const baseImage = body && typeof body.base_image === "string" ? body.base_image : "";
+
   let schemeDescription: string | null = null;
-  if (body && typeof body.scheme_id === "string") {
-    schemeDescription = presetById(body.scheme_id)?.description ?? null;
-  }
-  if (!schemeDescription && body && typeof body.custom === "string") {
-    schemeDescription = customSchemeDescription(body.custom);
-  }
-  if (!schemeDescription) {
-    return NextResponse.json(
-      { error: "Choose a colour scheme or describe one first." },
-      { status: 400 }
-    );
+  if (!refine) {
+    if (body && typeof body.scheme_id === "string") {
+      schemeDescription = presetById(body.scheme_id)?.description ?? null;
+    }
+    if (!schemeDescription && body && typeof body.custom === "string") {
+      schemeDescription = customSchemeDescription(body.custom);
+    }
+    if (!schemeDescription) {
+      return NextResponse.json(
+        { error: "Choose a colour scheme or describe one first." },
+        { status: 400 }
+      );
+    }
+  } else {
+    const m = baseImage.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!m || baseImage.length > 12 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Generate a visualisation first, then make a change to it." },
+        { status: 400 }
+      );
+    }
   }
 
   const admin = createClient(url, serviceKey, {
@@ -155,26 +175,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   };
 
-  // Fetch the facade image server side (Drive CDN or storage public URL).
-  const { data: facade } = await admin
-    .from("facade_options")
-    .select("image_path, name")
-    .eq("id", facadeId)
-    .maybeSingle();
-  const imageUrl = optionImageUrl(facade?.image_path ?? null, url, 1600);
-  if (!imageUrl) return fail("The facade image is unavailable.", 404);
-
+  // Source image: the previous result when refining, else the facade image
+  // fetched server side (Drive CDN or storage public URL).
   let sourceBase64: string;
   let sourceMime: string;
-  try {
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) throw new Error(`image fetch ${imgRes.status}`);
-    sourceMime = imgRes.headers.get("content-type")?.split(";")[0] || "image/jpeg";
-    const buf = Buffer.from(await imgRes.arrayBuffer());
-    if (buf.byteLength > MAX_SOURCE_BYTES) throw new Error("image too large");
-    sourceBase64 = buf.toString("base64");
-  } catch {
-    return fail("Could not load the facade image. Please try again.");
+  if (refine) {
+    const m = baseImage.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
+    sourceMime = m![1];
+    sourceBase64 = m![2];
+  } else {
+    const { data: facade } = await admin
+      .from("facade_options")
+      .select("image_path, name")
+      .eq("id", facadeId)
+      .maybeSingle();
+    const imageUrl = optionImageUrl(facade?.image_path ?? null, url, 1600);
+    if (!imageUrl) return fail("The facade image is unavailable.", 404);
+    try {
+      const imgRes = await fetch(imageUrl);
+      if (!imgRes.ok) throw new Error(`image fetch ${imgRes.status}`);
+      sourceMime = imgRes.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+      const buf = Buffer.from(await imgRes.arrayBuffer());
+      if (buf.byteLength > MAX_SOURCE_BYTES) throw new Error("image too large");
+      sourceBase64 = buf.toString("base64");
+    } catch {
+      return fail("Could not load the facade image. Please try again.");
+    }
   }
 
   // Gemini image edit over REST — no SDK.
@@ -192,7 +218,11 @@ export async function POST(req: NextRequest) {
             {
               parts: [
                 { inline_data: { mime_type: sourceMime, data: sourceBase64 } },
-                { text: buildVisualiserPrompt(schemeDescription) },
+                {
+                  text: refine
+                    ? buildRefinementPrompt(refine)
+                    : buildVisualiserPrompt(schemeDescription as string),
+                },
               ],
             },
           ],
