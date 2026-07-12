@@ -129,3 +129,32 @@ export function buildRefinementPrompt(instruction: string): string {
     "Photorealistic result, no text or watermarks."
   );
 }
+
+// ─── Saved image watermark ───────────────────────────────────────────────────
+// Saved visualisations carry the branding IN the file (canvas composited): a
+// footer strip with the TURNKEY wordmark and the indicative only disclaimer,
+// so the provenance survives wherever the image is forwarded — including a
+// builder's colour selection department.
+
+export const WATERMARK_BRAND = "TURNKEY";
+export const WATERMARK_TITLE = "AI VISUALISATION — INDICATIVE ONLY";
+export const WATERMARK_NOTE =
+  "Actual colours and selections may vary and can affect price";
+
+/** Proportional footer layout for a given image width (all px). */
+export function watermarkLayout(width: number): {
+  barHeight: number;
+  padX: number;
+  brandSize: number;
+  titleSize: number;
+  noteSize: number;
+} {
+  const w = Math.max(320, width);
+  return {
+    barHeight: Math.max(56, Math.round(w * 0.085)),
+    padX: Math.max(14, Math.round(w * 0.025)),
+    brandSize: Math.max(16, Math.round(w * 0.026)),
+    titleSize: Math.max(11, Math.round(w * 0.016)),
+    noteSize: Math.max(9, Math.round(w * 0.012)),
+  };
+}
