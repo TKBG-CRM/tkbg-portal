@@ -131,6 +131,37 @@ export default function SelectionGallery({
     }
   }
 
+  // The real wordmark SVG, made canvas safe: the asset has only a viewBox, so
+  // Firefox reports no intrinsic size — in that case the SVG is refetched with
+  // explicit dimensions injected. Returns null when the logo cannot be used
+  // (the caller falls back to a text wordmark).
+  async function loadBrandLogo(): Promise<{ img: HTMLImageElement; ratio: number } | null> {
+    const load = (src: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("logo load failed"));
+        i.src = src;
+      });
+    try {
+      let img = await load("/logos/TURNKEY_WORDMARK_WHITE.svg");
+      if (!img.naturalWidth || !img.naturalHeight) {
+        const text = await (await fetch("/logos/TURNKEY_WORDMARK_WHITE.svg")).text();
+        const sized = text.replace("<svg ", '<svg width="842" height="193" ');
+        const url = URL.createObjectURL(new Blob([sized], { type: "image/svg+xml" }));
+        try {
+          img = await load(url);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+      if (!img.naturalWidth || !img.naturalHeight) return null;
+      return { img, ratio: img.naturalWidth / img.naturalHeight };
+    } catch {
+      return null;
+    }
+  }
+
   // Compose the saved file with the branding IN the image: footer strip with
   // the TURNKEY wordmark + the indicative only disclaimer, so anyone the
   // client forwards it to (builder colour departments included) sees it is AI
@@ -153,24 +184,32 @@ export default function SelectionGallery({
       const ctx = canvas.getContext("2d");
       if (!ctx) return raw;
       ctx.drawImage(img, 0, 0);
-      // Footer strip
+      // Footer strip with a white divider line against the image.
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, h, w, barHeight);
-      ctx.fillStyle = "#957B60";
+      ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, h, w, Math.max(2, Math.round(barHeight * 0.04)));
-      // Brand wordmark (letter spaced caps — text render keeps it crisp on
-      // every browser; SVG rasterisation is unreliable in some).
       ctx.textBaseline = "middle";
       const midY = h + barHeight / 2;
-      ctx.fillStyle = "#FFFFFF";
-      try {
-        (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${Math.round(brandSize * 0.45)}px`;
-      } catch {
-        // Older browsers: no letter spacing, still legible.
+      // The actual Turnkey wordmark; text fallback only if the SVG cannot be
+      // rasterised on this browser.
+      const logo = await loadBrandLogo();
+      if (logo) {
+        const logoH = Math.round(barHeight * 0.32);
+        const logoW = Math.round(logoH * logo.ratio);
+        ctx.drawImage(logo.img, padX, Math.round(midY - logoH / 2), logoW, logoH);
+      } else {
+        ctx.fillStyle = "#FFFFFF";
+        try {
+          (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${Math.round(brandSize * 0.45)}px`;
+        } catch {
+          // Older browsers: no letter spacing, still legible.
+        }
+        ctx.font = `600 ${brandSize}px Helvetica, Arial, sans-serif`;
+        ctx.textAlign = "left";
+        ctx.fillText(WATERMARK_BRAND, padX, midY);
       }
-      ctx.font = `600 ${brandSize}px Helvetica, Arial, sans-serif`;
-      ctx.textAlign = "left";
-      ctx.fillText(WATERMARK_BRAND, padX, midY);
+      ctx.fillStyle = "#FFFFFF";
       // Disclaimer, right aligned, two lines
       try {
         (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = "1px";
