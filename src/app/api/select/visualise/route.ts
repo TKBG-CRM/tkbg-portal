@@ -24,6 +24,7 @@ import { selectionOpenState, optionImageUrl, type SelectionRequestRow } from "@/
 import {
   MAX_VISUALISATIONS,
   visualisationsRemaining,
+  visualiserAllowedForRequest,
   presetById,
   buildVisualiserPrompt,
   customSchemeDescription,
@@ -91,6 +92,34 @@ export async function POST(req: NextRequest) {
   }
   if (!r.facade_option_ids.includes(facadeId)) {
     return NextResponse.json({ error: "That facade is not part of this selection." }, { status: 400 });
+  }
+  // Per builder + per selection gating: no colour scheme sections on this
+  // request, and the project's builder must have the visualiser enabled.
+  if (!visualiserAllowedForRequest(r)) {
+    return NextResponse.json(
+      { error: "The visualiser is not available when colour schemes are part of your selection." },
+      { status: 403 }
+    );
+  }
+  const { data: vizProject } = await admin
+    .from("projects")
+    .select("builder_id")
+    .eq("id", r.project_id)
+    .maybeSingle();
+  let builderAllows = false;
+  if (vizProject?.builder_id) {
+    const { data: vizBuilder } = await admin
+      .from("contacts")
+      .select("visualiser_enabled")
+      .eq("id", vizProject.builder_id)
+      .maybeSingle();
+    builderAllows = (vizBuilder as { visualiser_enabled?: boolean } | null)?.visualiser_enabled === true;
+  }
+  if (!builderAllows) {
+    return NextResponse.json(
+      { error: "The visualiser is not available for this builder." },
+      { status: 403 }
+    );
   }
   if (visualisationsRemaining(r.ai_visualiser_count ?? 0) <= 0) {
     return NextResponse.json(
