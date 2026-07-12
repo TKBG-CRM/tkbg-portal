@@ -49,28 +49,42 @@ describe("referralMilestone", () => {
     expect(referralMilestone("bod_received").key).toBe("contract_signed");
   });
 
-  it("maps pre_site / construction / completed phases", () => {
+  it("maps pre_site and completed phases", () => {
     expect(referralMilestone("land_titled").key).toBe("pre_site");
     expect(referralMilestone("land_titled").step).toBe(7);
-    expect(referralMilestone("construction_base").key).toBe("construction");
-    expect(referralMilestone("construction_base").step).toBe(8);
     expect(referralMilestone("handover_completed").key).toBe("completed");
-    expect(referralMilestone("handover_completed").step).toBe(9);
+    expect(referralMilestone("handover_completed").step).toBe(13);
+  });
+
+  it("breaks construction out into the build stages", () => {
+    expect(referralMilestone("construction_base")).toMatchObject({
+      key: "construction_base",
+      label: "Base Stage",
+      step: 8,
+    });
+    expect(referralMilestone("construction_frame")).toMatchObject({
+      key: "construction_frame",
+      label: "Frame Stage",
+      step: 9,
+    });
+    expect(referralMilestone("construction_lockup").step).toBe(10);
+    expect(referralMilestone("construction_fixout").step).toBe(11);
+    expect(referralMilestone("construction_completion").step).toBe(12);
   });
 });
 
 describe("milestoneProgressPct", () => {
-  it("is 0 for not-proceeding, scales 1..9", () => {
-    expect(TOTAL_STEPS).toBe(9);
+  it("is 0 for not-proceeding, scales 1..13", () => {
+    expect(TOTAL_STEPS).toBe(13);
     expect(milestoneProgressPct(0)).toBe(0);
-    expect(milestoneProgressPct(9)).toBe(100);
+    expect(milestoneProgressPct(13)).toBe(100);
   });
 });
 
 describe("buildMilestoneTimeline", () => {
   it("marks steps done / current / upcoming around the milestone", () => {
     const t = buildMilestoneTimeline(referralMilestone("discovery_meeting_booked")); // step 3
-    expect(t).toHaveLength(9);
+    expect(t).toHaveLength(13);
     expect(t[0].state).toBe("done");
     expect(t[2].state).toBe("current");
     expect(t[3].state).toBe("upcoming");
@@ -79,5 +93,16 @@ describe("buildMilestoneTimeline", () => {
   it("has no current step for a not-proceeding lead (all upcoming)", () => {
     const t = buildMilestoneTimeline(referralMilestone("out_of_market"));
     expect(t.every((s) => s.state === "upcoming")).toBe(true);
+  });
+
+  it("carries the two instalment markers: 50% at Contract Signed, balance at Frame", () => {
+    const t = buildMilestoneTimeline(referralMilestone("construction_base")); // step 8
+    const withPayment = t.filter((s) => s.payment);
+    expect(withPayment.map((s) => s.step)).toEqual([6, 9]);
+    expect(t[5].payment).toContain("First 50%");
+    expect(t[5].state).toBe("done"); // contract instalment already triggered
+    expect(t[8].payment).toContain("Balance 50%");
+    expect(t[8].state).toBe("upcoming"); // frame instalment still ahead of Base
+    expect(t[7].payment).toBeNull();
   });
 });

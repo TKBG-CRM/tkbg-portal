@@ -7,17 +7,22 @@ import { STAGE_CONFIG } from "@/lib/stages";
  *
  * The early (pre-deposit) journey is broken out so partners can follow the
  * nurture progress — Contacted, Discovery Meeting, Options Presented — instead
- * of every lead reading "New Lead" until a deposit is paid. Thresholds are keyed
- * off named stages' order in STAGE_CONFIG so they survive re-ordering.
+ * of every lead reading "New Lead" until a deposit is paid. Construction is
+ * broken out into the build stages (Base, Frame, Lockup, Fixing, Completion)
+ * because the standard referral agreement pays in two instalments — 50% at
+ * contract signing and the balance 50% at frame stage — so partners need to
+ * see exactly where the build is relative to their payment triggers.
+ * Thresholds are keyed off named stages' order in STAGE_CONFIG so they
+ * survive re-ordering.
  */
 export type ReferralMilestone = {
   key: string;
   label: string;
-  step: number; // 0 = not proceeding, 1..9 along the journey
+  step: number; // 0 = not proceeding, 1..13 along the journey
   tone: "neutral" | "gold" | "green" | "red";
 };
 
-export const TOTAL_STEPS = 9;
+export const TOTAL_STEPS = 13;
 
 // Named-stage order landmarks (fall back to the known values if absent).
 const ORDER = (id: string, fallback: number) => STAGE_CONFIG[id]?.order ?? fallback;
@@ -40,10 +45,24 @@ export function referralMilestone(stageId: string | null): ReferralMilestone {
   const order = cfg?.order ?? 0;
 
   if (phase === "completed") {
-    return { key: "completed", label: "Completed", step: 9, tone: "green" };
+    return { key: "completed", label: "Completed", step: 13, tone: "green" };
   }
   if (phase === "construction") {
-    return { key: "construction", label: "In Construction", step: 8, tone: "green" };
+    // The Victorian build stages, in order. An unknown construction stage reads
+    // as Base (the first) rather than overstating progress.
+    if (order >= ORDER("construction_completion", 39)) {
+      return { key: "construction_completion", label: "Completion Stage", step: 12, tone: "green" };
+    }
+    if (order >= ORDER("construction_fixout", 38)) {
+      return { key: "construction_fixing", label: "Fixing Stage", step: 11, tone: "green" };
+    }
+    if (order >= ORDER("construction_lockup", 37)) {
+      return { key: "construction_lockup", label: "Lockup Stage", step: 10, tone: "green" };
+    }
+    if (order >= ORDER("construction_frame", 36)) {
+      return { key: "construction_frame", label: "Frame Stage", step: 9, tone: "green" };
+    }
+    return { key: "construction_base", label: "Base Stage", step: 8, tone: "green" };
   }
   if (phase === "pre_site") {
     return { key: "pre_site", label: "Pre-Site", step: 7, tone: "gold" };
@@ -73,23 +92,46 @@ export function milestoneProgressPct(step: number): number {
   return Math.round((step / TOTAL_STEPS) * 100);
 }
 
-/** The ordered partner-facing journey, used to render the lead timeline. */
-export const MILESTONE_STEPS: { step: number; label: string }[] = [
+/**
+ * The ordered partner-facing journey, used to render the lead timeline.
+ * `payment` marks the two instalment triggers from the standard referral
+ * agreement so a partner can see exactly when their fee becomes payable.
+ */
+export const MILESTONE_STEPS: { step: number; label: string; payment?: string }[] = [
   { step: 1, label: "New Lead" },
   { step: 2, label: "Contacted" },
   { step: 3, label: "Discovery Meeting" },
   { step: 4, label: "Options Presented" },
   { step: 5, label: "Deposit Paid" },
-  { step: 6, label: "Contract Signed" },
+  {
+    step: 6,
+    label: "Contract Signed",
+    payment: "First 50% of your referral fee becomes payable",
+  },
   { step: 7, label: "Pre-Site" },
-  { step: 8, label: "In Construction" },
-  { step: 9, label: "Completed" },
+  { step: 8, label: "Base Stage" },
+  {
+    step: 9,
+    label: "Frame Stage",
+    payment: "Balance 50% of your referral fee becomes payable",
+  },
+  { step: 10, label: "Lockup Stage" },
+  { step: 11, label: "Fixing Stage" },
+  { step: 12, label: "Completion Stage" },
+  { step: 13, label: "Completed" },
 ];
+
+/** Shown under the timeline wherever payment markers appear. */
+export const PAYMENT_TERMS_NOTE =
+  "Referral fee instalments become payable once the stage is complete and Turnkey " +
+  "has received the builder's stage payment, as set out in your referral agreement. " +
+  "We'll notify you when an instalment is ready to invoice.";
 
 export type TimelineStep = {
   step: number;
   label: string;
   state: "done" | "current" | "upcoming";
+  payment: string | null;
 };
 
 /**
@@ -103,5 +145,6 @@ export function buildMilestoneTimeline(m: ReferralMilestone): TimelineStep[] {
     label: s.label,
     state:
       s.step < m.step ? "done" : s.step === m.step ? "current" : "upcoming",
+    payment: s.payment ?? null,
   }));
 }
