@@ -312,7 +312,7 @@ export default function SelectionGallery({
                       setVizCustom(e.target.value);
                       if (e.target.value) setVizScheme(null);
                     }}
-                    placeholder="Or describe your own, e.g. sage green with white trims"
+                    placeholder="Or describe your own, e.g. Hampton facade with dark window frames"
                     className="text-sm"
                   />
                 </div>
