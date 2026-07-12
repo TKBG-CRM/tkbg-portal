@@ -127,3 +127,30 @@ export function assemblePurchasers(args: {
 
   return { purchasers, flatIdPaths };
 }
+
+/**
+ * The additional (non primary) purchasers that deserve their OWN contacts
+ * row, so staff pickers (Additional Clients on the project) can find them —
+ * previously they lived only inside the primary contact's purchasers JSON.
+ * Skips entries with neither a usable name nor an email.
+ */
+export function extraPurchaserContacts(
+  purchasers: AssembledPurchaser[]
+): Array<{
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+}> {
+  return purchasers
+    .filter((p) => !p.primary)
+    .filter((p) => (p.full_legal_name || "").trim() || (p.email || "").trim())
+    .map((p) => ({
+      first_name: p.first_name,
+      middle_name: p.middle_name,
+      last_name: p.last_name,
+      email: (p.email || "").trim() || null,
+      phone: (p.mobile || "").trim() || null,
+    }));
+}

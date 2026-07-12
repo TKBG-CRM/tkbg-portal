@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { mergeRegistrationFiles } from "@/lib/registration-files";
-import { assemblePurchasers } from "@/lib/registration-purchasers";
+import { assemblePurchasers, extraPurchaserContacts } from "@/lib/registration-purchasers";
 import {
   linkRegistrationPartners,
   partnerContactColumns,
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   const { data: contact, error: lookupErr } = await admin
     .from("contacts")
-    .select("id, email, is_registered, registration_token_used_at")
+    .select("id, email, is_registered, registration_token_used_at, sales_rep_id, source")
     .eq("registration_token", token)
     .maybeSingle();
 
@@ -276,11 +276,62 @@ export async function POST(req: NextRequest) {
   // the next project stage.
   const { data: projects } = await admin
     .from("projects")
-    .select("id, name, sales_rep_id, stage, stage_requirements_met, broker_id, conveyancer_id")
+    .select("id, name, sales_rep_id, stage, stage_requirements_met, broker_id, conveyancer_id, co_client_ids")
     .eq("client_id", contact.id)
     .limit(1);
 
   const project = projects?.[0] || null;
+
+  // Every additional purchaser becomes a REAL contact (deduped by email) and
+  // links onto the project as a co client — otherwise they exist only inside
+  // this contact's purchasers JSON and no staff picker can ever find them.
+  // Best-effort: a failure here must never block the registration.
+  try {
+    const extras = extraPurchaserContacts(purchasers);
+    if (extras.length) {
+      const coIds: string[] = [];
+      for (const extra of extras) {
+        let contactId: string | null = null;
+        if (extra.email) {
+          const { data: match } = await admin
+            .from("contacts")
+            .select("id")
+            .ilike("email", extra.email)
+            .limit(1);
+          if (match?.length) contactId = match[0].id as string;
+        }
+        if (!contactId) {
+          const { data: created } = await admin
+            .from("contacts")
+            .insert({
+              first_name: extra.first_name,
+              middle_name: extra.middle_name,
+              last_name: extra.last_name,
+              email: extra.email,
+              phone: extra.phone,
+              contact_type: "client",
+              sales_rep_id: (contact as { sales_rep_id?: string | null }).sales_rep_id ?? null,
+              source: (contact as { source?: string | null }).source ?? null,
+            })
+            .select("id")
+            .single();
+          if (created) contactId = created.id as string;
+        }
+        if (contactId && contactId !== contact.id) coIds.push(contactId);
+      }
+      if (coIds.length && project) {
+        const current = Array.isArray(
+          (project as { co_client_ids?: unknown }).co_client_ids
+        )
+          ? ((project as { co_client_ids: string[] }).co_client_ids)
+          : [];
+        const merged = Array.from(new Set([...current, ...coIds]));
+        await admin.from("projects").update({ co_client_ids: merged }).eq("id", project.id);
+      }
+    }
+  } catch (e) {
+    console.error("[register/submit] co purchaser contact linking failed:", e);
+  }
 
   if (project) {
     // Mirror purchaser + contact details onto the project so the
