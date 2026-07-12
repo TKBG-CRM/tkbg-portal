@@ -4,6 +4,7 @@ import {
   validateSelectionChoice,
   describeSelection,
   nextBusinessDay,
+  optionImageUrl,
 } from "./selections";
 
 const NOW = new Date("2026-07-13T00:00:00Z");
@@ -73,5 +74,22 @@ describe("nextBusinessDay", () => {
   it("skips the weekend", () => {
     expect(nextBusinessDay(new Date("2026-07-10T00:00:00Z"))).toBe("2026-07-13");
     expect(nextBusinessDay(new Date("2026-07-14T00:00:00Z"))).toBe("2026-07-15");
+  });
+});
+
+describe("optionImageUrl", () => {
+  const SB = "https://example.supabase.co";
+  it("renders drive: refs through Google's thumbnail CDN", () => {
+    expect(optionImageUrl("drive:1AbC", SB)).toBe(
+      "https://drive.google.com/thumbnail?id=1AbC&sz=w1600"
+    );
+  });
+  it("renders storage paths through the public bucket URL", () => {
+    expect(optionImageUrl("facades/royston/astoria.jpg", SB)).toBe(
+      `${SB}/storage/v1/object/public/facade-images/facades/royston/astoria.jpg`
+    );
+  });
+  it("passes null through", () => {
+    expect(optionImageUrl(null, SB)).toBeNull();
   });
 });

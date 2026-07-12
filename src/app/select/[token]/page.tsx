@@ -5,7 +5,11 @@ import {
 import SelectionGallery, {
   type GalleryOption,
 } from "@/components/select/SelectionGallery";
-import { selectionOpenState, type SelectionRequestRow } from "@/lib/selections";
+import {
+  selectionOpenState,
+  optionImageUrl,
+  type SelectionRequestRow,
+} from "@/lib/selections";
 
 export const dynamic = "force-dynamic";
 
@@ -93,9 +97,9 @@ export default async function SelectPage({
       .eq("status", "sent");
   }
 
-  // Load only the options this request offers.
-  const publicUrl = (path: string) =>
-    admin.storage.from("facade-images").getPublicUrl(path).data.publicUrl;
+  // Load only the options this request offers. Images may live in the
+  // facade-images bucket or link straight to Drive (drive:<id> refs).
+  const publicUrl = (path: string) => optionImageUrl(path, url) as string;
 
   const [{ data: facades }, { data: colours }] = await Promise.all([
     req.facade_option_ids.length

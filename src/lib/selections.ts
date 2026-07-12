@@ -115,6 +115,25 @@ export function describeSelection(parts: {
   return `Client selected ${bits.join("; ")}`;
 }
 
+/**
+ * An option's image_path is either a facade-images storage path or a
+ * "drive:<fileId>" reference to a link shared Google Drive file. Drive refs
+ * render through Google's image CDN (server side resizing); storage paths
+ * through the public bucket URL. Mirrors the CRM helper of the same name.
+ */
+export function optionImageUrl(
+  imagePath: string | null | undefined,
+  supabaseUrl: string,
+  width = 1600
+): string | null {
+  if (!imagePath) return null;
+  if (imagePath.startsWith("drive:")) {
+    const id = imagePath.slice("drive:".length);
+    return `https://drive.google.com/thumbnail?id=${id}&sz=w${width}`;
+  }
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/facade-images/${imagePath}`;
+}
+
 /** Next business day (Mon to Fri) after `from`, as yyyy-mm-dd. */
 export function nextBusinessDay(from: Date): string {
   const d = new Date(from.getTime());
