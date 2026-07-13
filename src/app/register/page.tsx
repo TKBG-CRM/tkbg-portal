@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { purchaserStepComplete } from "@/lib/registration-names";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -88,10 +89,14 @@ function RegistrationForm() {
     state: "",
     postcode: "",
   });
+  // Middle names must be settled deliberately (typed, or explicitly declined)
+  // because contract documents need the full legal name — see registration-names.
+  const [noMiddleName, setNoMiddleName] = useState(false);
   const [additionalPurchasers, setAdditionalPurchasers] = useState<
     {
       first_name: string;
       middle_name: string;
+      no_middle_name: boolean;
       last_name: string;
       email: string;
       mobile: string;
@@ -230,6 +235,7 @@ function RegistrationForm() {
       {
         first_name: "",
         middle_name: "",
+        no_middle_name: false,
         last_name: "",
         email: "",
         mobile: "",
@@ -237,7 +243,7 @@ function RegistrationForm() {
       },
     ]);
 
-  const updatePurchaser = (idx: number, field: string, value: string) =>
+  const updatePurchaser = (idx: number, field: string, value: string | boolean) =>
     setAdditionalPurchasers((prev) =>
       prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
     );
@@ -382,7 +388,7 @@ function RegistrationForm() {
           .filter((p) => p.first_name.trim() && p.last_name.trim())
           .map(async (p) => ({
             first_name: p.first_name,
-            middle_name: p.middle_name,
+            middle_name: p.no_middle_name ? "" : p.middle_name,
             last_name: p.last_name,
             email: p.email,
             mobile: p.mobile,
@@ -396,7 +402,7 @@ function RegistrationForm() {
         body: JSON.stringify({
           token,
           first_name: form.first_name,
-          middle_name: form.middle_name,
+          middle_name: noMiddleName ? "" : form.middle_name,
           last_name: form.last_name,
           email: form.email,
           mobile: form.mobile,
@@ -623,7 +629,28 @@ function RegistrationForm() {
                 <SectionHeader icon={User}>Purchaser Details</SectionHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div><FieldLabel required>First Name</FieldLabel><Input value={form.first_name} onChange={(e) => upd("first_name", e.target.value)} /></div>
-                  <div><FieldLabel>Middle Name</FieldLabel><Input value={form.middle_name} onChange={(e) => upd("middle_name", e.target.value)} /></div>
+                  <div>
+                    <FieldLabel required>Middle Name(s)</FieldLabel>
+                    <Input
+                      value={form.middle_name}
+                      onChange={(e) => upd("middle_name", e.target.value)}
+                      placeholder="As shown on your ID"
+                      disabled={noMiddleName}
+                    />
+                    <label className="mt-1.5 flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-neutral-300 accent-brand-gold"
+                        checked={noMiddleName}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setNoMiddleName(on);
+                          if (on) upd("middle_name", "");
+                        }}
+                      />
+                      I don&apos;t have a middle name
+                    </label>
+                  </div>
                   <div><FieldLabel required>Last Name</FieldLabel><Input value={form.last_name} onChange={(e) => upd("last_name", e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -646,7 +673,28 @@ function RegistrationForm() {
                         </button>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div><FieldLabel>First Name</FieldLabel><Input value={p.first_name} onChange={(e) => updatePurchaser(i, "first_name", e.target.value)} /></div>
-                          <div><FieldLabel>Middle Name</FieldLabel><Input value={p.middle_name} onChange={(e) => updatePurchaser(i, "middle_name", e.target.value)} /></div>
+                          <div>
+                            <FieldLabel>Middle Name(s)</FieldLabel>
+                            <Input
+                              value={p.middle_name}
+                              onChange={(e) => updatePurchaser(i, "middle_name", e.target.value)}
+                              placeholder="As shown on their ID"
+                              disabled={p.no_middle_name}
+                            />
+                            <label className="mt-1.5 flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-neutral-300 accent-brand-gold"
+                                checked={p.no_middle_name}
+                                onChange={(e) => {
+                                  const on = e.target.checked;
+                                  updatePurchaser(i, "no_middle_name", on);
+                                  if (on) updatePurchaser(i, "middle_name", "");
+                                }}
+                              />
+                              No middle name
+                            </label>
+                          </div>
                           <div><FieldLabel>Last Name</FieldLabel><Input value={p.last_name} onChange={(e) => updatePurchaser(i, "last_name", e.target.value)} /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -997,10 +1045,10 @@ function RegistrationForm() {
                   onClick={() => setStep((s) => s + 1)}
                   disabled={
                     (step === 0 &&
-                      (!form.first_name.trim() ||
-                        !form.last_name.trim() ||
-                        !form.email ||
-                        !form.mobile)) ||
+                      !purchaserStepComplete({
+                        primary: { ...form, no_middle_name: noMiddleName },
+                        additional: additionalPurchasers,
+                      })) ||
                     (step === 2 && idDocuments.length === 0 && !idLater)
                   }
                 >
