@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     token,
+    accessOnly = false,
     first_name,
     middle_name,
     last_name,
@@ -497,7 +498,7 @@ export async function POST(req: NextRequest) {
   // alert (critical Command Centre banner + branded email + SMS + 12h call
   // task). Fire-and-forget: this is best-effort and must never block or fail
   // the client's success screen, so it's wrapped and only logged on error.
-  await notifyCrmClientSignedUp(contact.id, project?.id ?? null);
+  await notifyCrmClientSignedUp(contact.id, project?.id ?? null, accessOnly === true);
 
   return NextResponse.json({ success: true });
 }
@@ -599,7 +600,8 @@ async function notifySalesRepOfRegistration(
  */
 async function notifyCrmClientSignedUp(
   contactId: string,
-  projectId: string | null
+  projectId: string | null,
+  accessOnly: boolean
 ): Promise<void> {
   const secret = process.env.INTERNAL_WEBHOOK_SECRET;
   if (!secret) {
@@ -622,6 +624,8 @@ async function notifyCrmClientSignedUp(
         contact_id: contactId,
         project_id: projectId,
         signed_up_at: new Date().toISOString(),
+        // Existing client activating documentation access — not a new sale.
+        access_only: accessOnly,
       }),
     });
     if (!res.ok) {

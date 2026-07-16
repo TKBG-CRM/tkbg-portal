@@ -401,6 +401,9 @@ function RegistrationForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
+          // Access mode = existing client just setting a password; the CRM is
+          // told so staff get a calm note instead of a New Sale celebration.
+          accessOnly: isAccess,
           first_name: form.first_name,
           middle_name: noMiddleName ? "" : form.middle_name,
           last_name: form.last_name,
