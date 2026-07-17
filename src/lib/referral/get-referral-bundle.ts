@@ -7,6 +7,11 @@ import {
   referralMilestone,
   type ReferralMilestone,
 } from "./referral-status";
+import {
+  allowedPartnerIds,
+  partnerLabelById,
+  type TeamMember,
+} from "./team";
 
 /**
  * Referral-partner portal data loader (portal app).
@@ -24,6 +29,15 @@ import {
  * A partner may ALSO be a client (linked via referral_partners.contact_id). The
  * two roles never mix here: this bundle only ever returns leads the partner
  * *referred*, never their own client project.
+ *
+ * ORGANISATIONS: a partner row may carry `parent_partner_id` pointing at
+ * another partner — the child is a staff member of the parent's organisation
+ * (e.g. Finance Family brokers under the owner). The owner's session widens to
+ * their own id + all children (each row tagged with who referred it); a staff
+ * session has no children so it stays scoped to exactly their own referrals.
+ * The allowed-id set is ALWAYS derived server-side from the verified session
+ * email — never from anything the client sends — so one organisation can never
+ * read another's leads.
  *
  * We use the service role because there is no per-partner RLS policy (partners
  * aren't linked to an auth.users row the way registered clients are). The
@@ -55,6 +69,9 @@ export type ReferredLead = {
   referredOn: string | null;
   milestone: ReferralMilestone;
   hasNote: boolean;
+  /** Which partner in the organisation referred this lead (owner view only). */
+  referredById: string | null;
+  referredBy: string | null;
 };
 
 export type PartnerCommission = {
@@ -65,10 +82,14 @@ export type PartnerCommission = {
   status: string; // pending | due | paid | cancelled
   dueDate: string | null;
   paidDate: string | null;
+  referredById: string | null;
+  referredBy: string | null;
 };
 
 export type ReferralBundle = {
   partner: ReferralPartner | null;
+  /** Partners reporting to the signed-in partner — non-empty only for an organisation owner. */
+  team: TeamMember[];
   leads: ReferredLead[];
   commissions: PartnerCommission[];
   totals: { pending: number; paid: number; leadCount: number; convertedCount: number };
@@ -90,6 +111,7 @@ const EMPTY_TOTALS = { pending: 0, paid: 0, leadCount: 0, convertedCount: 0 };
 async function resolveSessionPartner(): Promise<{
   admin: SupabaseClient;
   partner: ReferralPartner;
+  team: TeamMember[];
 } | null> {
   const supabase = createClient();
   const {
@@ -133,10 +155,25 @@ async function resolveSessionPartner(): Promise<{
     contact_name: row.contact_name,
     email: row.email,
   };
-  return { admin, partner };
+
+  // Organisation team: partners whose parent_partner_id points at this
+  // partner. Non-owners (and solo partners) simply get an empty list. A query
+  // error (e.g. the column not existing yet) degrades to solo behaviour
+  // rather than breaking the portal.
+  const { data: teamRows } = await admin
+    .from("referral_partners")
+    .select("id, name, contact_name")
+    .eq("parent_partner_id", partner.id)
+    .order("contact_name", { ascending: true });
+  const team: TeamMember[] = (teamRows ?? []) as TeamMember[];
+
+  return { admin, partner, team };
 }
 
-function mapCommissions(rows: any[] | null): PartnerCommission[] {
+function mapCommissions(
+  rows: any[] | null,
+  labelById?: Map<string, string>
+): PartnerCommission[] {
   return (rows ?? []).map((c: any) => ({
     id: c.id as string,
     projectName: (c.project_name as string) || null,
@@ -145,6 +182,9 @@ function mapCommissions(rows: any[] | null): PartnerCommission[] {
     status: (c.status as string) || "pending",
     dueDate: (c.due_date as string) || null,
     paidDate: (c.paid_date as string) || null,
+    referredById: (c.referral_partner_id as string) || null,
+    referredBy:
+      labelById?.get(c.referral_partner_id as string) ?? null,
   }));
 }
 
@@ -154,15 +194,25 @@ function mapCommissions(rows: any[] | null): PartnerCommission[] {
 export async function getReferralBundle(): Promise<ReferralBundle> {
   const session = await resolveSessionPartner();
   if (!session) {
-    return { partner: null, leads: [], commissions: [], totals: { ...EMPTY_TOTALS } };
+    return {
+      partner: null,
+      team: [],
+      leads: [],
+      commissions: [],
+      totals: { ...EMPTY_TOTALS },
+    };
   }
-  const { admin, partner } = session;
+  const { admin, partner, team } = session;
+  const partnerIds = allowedPartnerIds(partner, team);
+  const labelById = partnerLabelById(partner, team);
 
   // ── Referred leads (curated columns only) ────────────────────────────────
   const { data: projectRows } = await admin
     .from("projects")
-    .select("id, name, client_full_name, client_id, stage, created_at, referral_partner_note")
-    .eq("referral_partner_id", partner.id)
+    .select(
+      "id, name, client_full_name, client_id, stage, created_at, referral_partner_note, referral_partner_id"
+    )
+    .in("referral_partner_id", partnerIds)
     .order("created_at", { ascending: false });
 
   const projects = projectRows ?? [];
@@ -196,6 +246,8 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
     referredOn: (p.created_at as string) || null,
     milestone: referralMilestone(p.stage as string | null),
     hasNote: !!(p.referral_partner_note && String(p.referral_partner_note).trim()),
+    referredById: (p.referral_partner_id as string) || null,
+    referredBy: labelById.get(p.referral_partner_id as string) ?? null,
   }));
 
   // ── Contact-only referred leads (no project yet) ─────────────────────────
@@ -207,8 +259,8 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
   );
   const { data: contactRows } = await admin
     .from("contacts")
-    .select("id, first_name, last_name, created_at")
-    .eq("referral_partner_id", partner.id)
+    .select("id, first_name, last_name, created_at, referral_partner_id")
+    .in("referral_partner_id", partnerIds)
     .order("created_at", { ascending: false });
   for (const c of contactRows ?? []) {
     if (projectClientIds.has(c.id as string)) continue;
@@ -220,6 +272,8 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
       referredOn: (c.created_at as string) || null,
       milestone: referralMilestone(null),
       hasNote: false,
+      referredById: (c.referral_partner_id as string) || null,
+      referredBy: labelById.get(c.referral_partner_id as string) ?? null,
     });
   }
   leads.sort((a, b) => (b.referredOn || "").localeCompare(a.referredOn || ""));
@@ -228,12 +282,12 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
   const { data: commissionRows } = await admin
     .from("referral_partner_commissions")
     .select(
-      "id, project_name, client_name, referral_amount, status, due_date, paid_date, created_at"
+      "id, project_name, client_name, referral_amount, status, due_date, paid_date, created_at, referral_partner_id"
     )
-    .eq("referral_partner_id", partner.id)
+    .in("referral_partner_id", partnerIds)
     .order("created_at", { ascending: false });
 
-  const commissions = mapCommissions(commissionRows);
+  const commissions = mapCommissions(commissionRows, labelById);
 
   const totals = {
     leadCount: leads.length,
@@ -247,28 +301,33 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
       .reduce((s, c) => s + c.amount, 0),
   };
 
-  return { partner, leads, commissions, totals };
+  return { partner, team, leads, commissions, totals };
 }
 
 /**
  * Load a single referred lead plus its curated note and commissions — but ONLY
- * if the lead belongs to the session partner. The lead id comes from the URL,
- * so the `.eq("referral_partner_id", partner.id)` filter is the ownership check
- * that stops one partner reading another's lead. Returns null when the lead
- * doesn't exist or isn't theirs (so callers can 404 rather than leak existence).
+ * if the lead belongs to the session partner (or, for an organisation owner, a
+ * team member). The lead id comes from the URL, so the referral_partner_id
+ * filter is the ownership check that stops one partner reading another's lead.
+ * Returns null when the lead doesn't exist or isn't theirs (so callers can 404
+ * rather than leak existence).
  */
 export async function getReferralLeadDetail(
   leadId: string
 ): Promise<ReferralLeadDetail | null> {
   const session = await resolveSessionPartner();
   if (!session) return null;
-  const { admin, partner } = session;
+  const { admin, partner, team } = session;
+  const partnerIds = allowedPartnerIds(partner, team);
+  const labelById = partnerLabelById(partner, team);
 
   const { data: project } = await admin
     .from("projects")
-    .select("id, name, client_full_name, client_id, stage, created_at, referral_partner_note")
+    .select(
+      "id, name, client_full_name, client_id, stage, created_at, referral_partner_note, referral_partner_id"
+    )
     .eq("id", leadId)
-    .eq("referral_partner_id", partner.id) // ownership gate
+    .in("referral_partner_id", partnerIds) // ownership gate
     .maybeSingle();
 
   // Contact-only referred lead (no project yet) — resolve from contacts, still
@@ -276,9 +335,9 @@ export async function getReferralLeadDetail(
   if (!project) {
     const { data: contact } = await admin
       .from("contacts")
-      .select("id, first_name, last_name, created_at")
+      .select("id, first_name, last_name, created_at, referral_partner_id")
       .eq("id", leadId)
-      .eq("referral_partner_id", partner.id)
+      .in("referral_partner_id", partnerIds)
       .maybeSingle();
     if (!contact) return null;
     const c = contact as any;
@@ -289,6 +348,8 @@ export async function getReferralLeadDetail(
       referredOn: (c.created_at as string) || null,
       milestone: referralMilestone(null),
       hasNote: false,
+      referredById: (c.referral_partner_id as string) || null,
+      referredBy: labelById.get(c.referral_partner_id as string) ?? null,
     };
     return { partner, lead, note: null, commissions: [] };
   }
@@ -320,16 +381,23 @@ export async function getReferralLeadDetail(
     referredOn: (p.created_at as string) || null,
     milestone: referralMilestone(p.stage as string | null),
     hasNote: !!note,
+    referredById: (p.referral_partner_id as string) || null,
+    referredBy: labelById.get(p.referral_partner_id as string) ?? null,
   };
 
   const { data: commissionRows } = await admin
     .from("referral_partner_commissions")
     .select(
-      "id, project_name, client_name, referral_amount, status, due_date, paid_date, created_at"
+      "id, project_name, client_name, referral_amount, status, due_date, paid_date, created_at, referral_partner_id"
     )
-    .eq("referral_partner_id", partner.id)
+    .in("referral_partner_id", partnerIds)
     .eq("project_id", leadId)
     .order("created_at", { ascending: false });
 
-  return { partner, lead, note, commissions: mapCommissions(commissionRows) };
+  return {
+    partner,
+    lead,
+    note,
+    commissions: mapCommissions(commissionRows, labelById),
+  };
 }
