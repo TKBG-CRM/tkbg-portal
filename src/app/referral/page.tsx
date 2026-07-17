@@ -17,6 +17,7 @@ import {
   milestoneProgressPct,
   type ReferralMilestone,
 } from "@/lib/referral/referral-status";
+import { memberSummaries } from "@/lib/referral/team";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ function PortalHeader() {
 }
 
 export default async function ReferralPortalPage() {
-  const { partner, leads, commissions, totals } = await getReferralBundle();
+  const { partner, team, leads, commissions, totals } = await getReferralBundle();
 
   // No partner resolved for this session → bounce to the referral login.
   if (!partner) {
@@ -97,6 +98,13 @@ export default async function ReferralPortalPage() {
   }
 
   const partnerName = partner.contact_name || partner.name || "Referral Partner";
+  // Organisation owner: this partner has team members reporting to them, so
+  // the bundle covers the whole team and each lead carries who referred it.
+  const isOrgView = team.length > 0;
+  const members = isOrgView
+    ? memberSummaries(leads, commissions, partner, team)
+    : [];
+  const orgName = partner.name || partnerName;
 
   return (
     <div className="min-h-screen bg-[#f7f5f2] font-body">
@@ -104,13 +112,17 @@ export default async function ReferralPortalPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-6">
           <p className="text-[10px] uppercase tracking-[0.2em] text-brand-gold">
-            Referral Partner
+            {isOrgView ? "Referral Partner — Organisation" : "Referral Partner"}
           </p>
           <h1 className="text-2xl font-semibold text-black mt-1 font-heading">
-            {partnerName}
+            {isOrgView ? orgName : partnerName}
           </h1>
           <p className="text-sm text-neutral-500 mt-1">
-            {totals.leadCount === 0
+            {isOrgView
+              ? `Showing referrals for you and ${team.length} team member${
+                  team.length === 1 ? "" : "s"
+                }.`
+              : totals.leadCount === 0
               ? "No referred leads are showing yet."
               : `Tracking ${totals.leadCount} referred lead${
                   totals.leadCount === 1 ? "" : "s"
@@ -126,11 +138,49 @@ export default async function ReferralPortalPage() {
           <StatCard icon={DollarSign} label="Paid" value={fmtMoney(totals.paid)} />
         </div>
 
+        {/* Per-member breakdown — organisation owners only */}
+        {isOrgView && (
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-black mb-3 flex items-center gap-2">
+              <Users className="h-4 w-4 text-brand-gold" />
+              Your Team
+            </h2>
+            <div className="bg-white border border-neutral-200 rounded-lg divide-y divide-neutral-100">
+              {members.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3"
+                >
+                  <p className="font-medium text-black text-sm min-w-0 truncate">
+                    {m.label}
+                    {m.isOwner && (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-brand-gold/20 bg-brand-gold/10 px-2 py-0.5 text-[10px] font-medium text-brand-gold align-middle">
+                        Owner
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-neutral-500 shrink-0">
+                    <span>
+                      {m.leadCount} referred · {m.convertedCount} converted
+                    </span>
+                    <span className="text-neutral-400">
+                      Pending {fmtMoney(m.pending)}
+                    </span>
+                    <span className="font-medium text-green-700">
+                      Paid {fmtMoney(m.paid)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Referred leads */}
         <section className="mb-10">
           <h2 className="text-sm font-semibold text-black mb-3 flex items-center gap-2">
             <Handshake className="h-4 w-4 text-brand-gold" />
-            Your Referrals
+            {isOrgView ? "All Referrals" : "Your Referrals"}
           </h2>
 
           {leads.length === 0 ? (
@@ -167,6 +217,12 @@ export default async function ReferralPortalPage() {
                               <span className="inline-flex items-center gap-1 text-xs text-brand-gold">
                                 <StickyNote className="h-3 w-3" />
                                 Note
+                              </span>
+                            )}
+                            {isOrgView && lead.referredBy && (
+                              <span className="inline-flex items-center gap-1 text-xs text-neutral-500">
+                                <Users className="h-3 w-3 text-neutral-400" />
+                                {lead.referredBy}
                               </span>
                             )}
                           </div>
@@ -237,6 +293,7 @@ export default async function ReferralPortalPage() {
                           : dueOn
                           ? `Due ${dueOn}`
                           : "Awaiting payment"}
+                        {isOrgView && c.referredBy ? ` · ${c.referredBy}` : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
