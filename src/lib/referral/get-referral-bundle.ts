@@ -12,6 +12,7 @@ import {
   partnerLabelById,
   type TeamMember,
 } from "./team";
+import { canSelfServeTeam } from "./team-signup";
 
 /**
  * Referral-partner portal data loader (portal app).
@@ -90,6 +91,9 @@ export type ReferralBundle = {
   partner: ReferralPartner | null;
   /** Partners reporting to the signed-in partner — non-empty only for an organisation owner. */
   team: TeamMember[];
+  /** Whether this partner may self-serve team members (business email domain,
+   * not themselves someone's team member). */
+  canAddTeam: boolean;
   leads: ReferredLead[];
   commissions: PartnerCommission[];
   totals: { pending: number; paid: number; leadCount: number; convertedCount: number };
@@ -112,6 +116,7 @@ async function resolveSessionPartner(): Promise<{
   admin: SupabaseClient;
   partner: ReferralPartner;
   team: TeamMember[];
+  hasOwner: boolean;
 } | null> {
   const supabase = createClient();
   const {
@@ -167,7 +172,18 @@ async function resolveSessionPartner(): Promise<{
     .order("contact_name", { ascending: true });
   const team: TeamMember[] = (teamRows ?? []) as TeamMember[];
 
-  return { admin, partner, team };
+  // Whether this partner is themselves someone's team member (staff can't
+  // build teams of their own — one level only). Queried separately from the
+  // main partner row so a missing column pre-migration degrades to false.
+  const { data: parentRow } = await admin
+    .from("referral_partners")
+    .select("parent_partner_id")
+    .eq("id", partner.id)
+    .maybeSingle();
+  const hasOwner = !!(parentRow as { parent_partner_id?: string | null } | null)
+    ?.parent_partner_id;
+
+  return { admin, partner, team, hasOwner };
 }
 
 function mapCommissions(
@@ -197,12 +213,14 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
     return {
       partner: null,
       team: [],
+      canAddTeam: false,
       leads: [],
       commissions: [],
       totals: { ...EMPTY_TOTALS },
     };
   }
-  const { admin, partner, team } = session;
+  const { admin, partner, team, hasOwner } = session;
+  const canAddTeam = !hasOwner && canSelfServeTeam(partner.email);
   const partnerIds = allowedPartnerIds(partner, team);
   const labelById = partnerLabelById(partner, team);
 
@@ -301,7 +319,7 @@ export async function getReferralBundle(): Promise<ReferralBundle> {
       .reduce((s, c) => s + c.amount, 0),
   };
 
-  return { partner, team, leads, commissions, totals };
+  return { partner, team, canAddTeam, leads, commissions, totals };
 }
 
 /**
