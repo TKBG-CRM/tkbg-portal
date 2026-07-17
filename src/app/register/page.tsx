@@ -404,6 +404,9 @@ function RegistrationForm() {
           // Access mode = existing client just setting a password; the CRM is
           // told so staff get a calm note instead of a New Sale celebration.
           accessOnly: isAccess,
+          // Client chose to supply their ID later — the CRM raises a chase
+          // task so it isn't silently forgotten until contract time.
+          idLater,
           first_name: form.first_name,
           middle_name: noMiddleName ? "" : form.middle_name,
           last_name: form.last_name,
