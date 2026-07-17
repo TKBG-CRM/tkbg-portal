@@ -43,23 +43,14 @@ export async function POST(req: NextRequest) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // ── Validate: reject staff, require a portal-enabled partner ──────────────
-  const { data: staffProfile } = await admin
-    .from("user_profiles")
-    .select("id")
-    .ilike("email", email)
-    .maybeSingle();
-  if (staffProfile) {
-    return NextResponse.json(
-      {
-        error:
-          "This email is a Turnkey staff account. Please sign in to the CRM instead.",
-        code: "staff",
-      },
-      { status: 403 }
-    );
-  }
-
+  // ── Validate: a portal-enabled partner ALWAYS gets in ─────────────────────
+  // The partner lookup runs FIRST and wins. It used to run after the staff
+  // check, but the handle_new_user trigger creates a user_profiles row for
+  // every auth user this very route creates (first sign-in), so from a
+  // partner's SECOND visit onward the profile-row-exists check misread them
+  // as Turnkey staff and locked them out. A row in referral_partners with
+  // portal_access is the authoritative signal; the staff message is only for
+  // emails that are NOT partners.
   const { data: partners } = await admin
     .from("referral_partners")
     .select("id, contact_name, name")
@@ -68,6 +59,21 @@ export async function POST(req: NextRequest) {
     .limit(1);
   const partner = partners?.[0];
   if (!partner) {
+    const { data: staffProfile } = await admin
+      .from("user_profiles")
+      .select("id")
+      .ilike("email", email)
+      .maybeSingle();
+    if (staffProfile) {
+      return NextResponse.json(
+        {
+          error:
+            "This email is a Turnkey staff account. Please sign in to the CRM instead.",
+          code: "staff",
+        },
+        { status: 403 }
+      );
+    }
     return NextResponse.json(
       {
         error:
@@ -80,9 +86,15 @@ export async function POST(req: NextRequest) {
 
   // ── Ensure a passwordless auth user exists, then mint a magic-link token ───
   // createUser errors if the user already exists — that's fine, we ignore it and
-  // move on to generateLink (which needs the user to exist).
+  // move on to generateLink (which needs the user to exist). The source marker
+  // tells the handle_new_user trigger (migration 102) NOT to mint a staff
+  // user_profiles row for this partner login.
   await admin.auth.admin
-    .createUser({ email, email_confirm: true })
+    .createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { source: "referral_partner_portal" },
+    })
     .catch(() => undefined);
 
   let hashedToken: string | null = null;
