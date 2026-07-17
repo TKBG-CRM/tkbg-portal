@@ -20,6 +20,7 @@ import {
 import { memberSummaries } from "@/lib/referral/team";
 import { emailDomain } from "@/lib/referral/team-signup";
 import AddTeamMemberForm from "@/components/referral/AddTeamMemberForm";
+import RemoveTeamMemberButton from "@/components/referral/RemoveTeamMemberButton";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +165,7 @@ export default async function ReferralPortalPage() {
                       </span>
                     )}
                   </p>
-                  <div className="flex items-center gap-4 text-xs text-neutral-500 shrink-0">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500 shrink-0">
                     <span>
                       {m.leadCount} referred · {m.convertedCount} converted
                     </span>
@@ -174,6 +175,12 @@ export default async function ReferralPortalPage() {
                     <span className="font-medium text-green-700">
                       Paid {fmtMoney(m.paid)}
                     </span>
+                    {!m.isOwner && (
+                      <RemoveTeamMemberButton
+                        memberId={m.id}
+                        memberLabel={m.label}
+                      />
+                    )}
                   </div>
                 </div>
               ))}
