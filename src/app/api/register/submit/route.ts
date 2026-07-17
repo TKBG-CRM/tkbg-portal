@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
   const {
     token,
     accessOnly = false,
+    idLater = false,
     first_name,
     middle_name,
     last_name,
@@ -498,6 +499,29 @@ export async function POST(req: NextRequest) {
   // alert (critical Command Centre banner + branded email + SMS + 12h call
   // task). Fire-and-forget: this is best-effort and must never block or fail
   // the client's success screen, so it's wrapped and only logged on error.
+  // The client opted to send their ID later and nothing was captured: raise
+  // a chase task for the rep NOW, so the missing ID surfaces long before the
+  // contract request needs it. Best-effort — never blocks registration.
+  if (idLater === true && mergedIdPaths.length === 0) {
+    try {
+      const due = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+      await admin.from("tasks").insert({
+        title: `Chase client ID — ${primaryFullName || "new client"}`,
+        description:
+          "The client chose to supply their photo ID later during portal registration. " +
+          "Chase it up and upload it to the project's documents (category Client ID) — " +
+          "the contract request needs it.",
+        contact_id: contact.id,
+        project_id: project?.id ?? null,
+        assigned_to: (contact as { sales_rep_id?: string | null }).sales_rep_id ?? null,
+        due_date: due.toISOString().slice(0, 10),
+        priority: "high",
+      });
+    } catch (err) {
+      console.error("[register/submit] ID chase task failed:", err);
+    }
+  }
+
   await notifyCrmClientSignedUp(contact.id, project?.id ?? null, accessOnly === true);
 
   return NextResponse.json({ success: true });
