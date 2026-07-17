@@ -18,6 +18,8 @@ import {
   type ReferralMilestone,
 } from "@/lib/referral/referral-status";
 import { memberSummaries } from "@/lib/referral/team";
+import { emailDomain } from "@/lib/referral/team-signup";
+import AddTeamMemberForm from "@/components/referral/AddTeamMemberForm";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +92,8 @@ function PortalHeader() {
 }
 
 export default async function ReferralPortalPage() {
-  const { partner, team, leads, commissions, totals } = await getReferralBundle();
+  const { partner, team, canAddTeam, leads, commissions, totals } =
+    await getReferralBundle();
 
   // No partner resolved for this session → bounce to the referral login.
   if (!partner) {
@@ -138,13 +141,15 @@ export default async function ReferralPortalPage() {
           <StatCard icon={DollarSign} label="Paid" value={fmtMoney(totals.paid)} />
         </div>
 
-        {/* Per-member breakdown — organisation owners only */}
-        {isOrgView && (
+        {/* Per-member breakdown — organisation owners only. Partners with a
+            business email domain can build their team themselves. */}
+        {(isOrgView || canAddTeam) && (
           <section className="mb-8">
             <h2 className="text-sm font-semibold text-black mb-3 flex items-center gap-2">
               <Users className="h-4 w-4 text-brand-gold" />
               Your Team
             </h2>
+            {isOrgView && (
             <div className="bg-white border border-neutral-200 rounded-lg divide-y divide-neutral-100">
               {members.map((m) => (
                 <div
@@ -173,6 +178,17 @@ export default async function ReferralPortalPage() {
                 </div>
               ))}
             </div>
+            )}
+            {!isOrgView && (
+              <p className="text-xs text-neutral-500">
+                Work with a team? Add your colleagues and their referrals will
+                roll up here for you, while each of them only ever sees their
+                own.
+              </p>
+            )}
+            {canAddTeam && (
+              <AddTeamMemberForm ownerDomain={emailDomain(partner.email) || ""} />
+            )}
           </section>
         )}
 
